@@ -1,0 +1,6 @@
+{
+  "name": "Saviour AI",
+  "description": "An advanced, agentic AI productivity companion that actively schedules, mitigates, and breaks down procrastination blocks before goals are lost.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
