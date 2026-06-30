@@ -1099,14 +1099,18 @@ export default function App() {
       </footer>
 
       {/* Onboarding Assistant Carousel (First-Time User Experience Modal Overlay) */}
-      <OnboardingCarousel
-        isOpen={showOnboarding}
-        onClose={() => {
-          setShowOnboarding(false);
-          localStorage.setItem('onboarding_completed', 'true');
-        }}
-        onConnectGoogle={handleGoogleLogin}
-      />
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingCarousel
+            onClose={() => {
+              setShowOnboarding(false);
+              localStorage.setItem('onboarding_completed', 'true');
+            }}
+            onConnectGoogle={handleGoogleLogin}
+            isLoggedIn={!!accessToken}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
