@@ -77,33 +77,33 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
   };
 
   return (
-    <div className="bg-zinc-950/40 border border-white/5 backdrop-blur-md rounded-2xl p-5 space-y-5 relative overflow-hidden">
+    <div className="bg-surface border border-border rounded-2xl p-5 space-y-5 relative overflow-hidden font-sans">
       {/* Top action header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-white/5 pb-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-border pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-purple-500/10 rounded-xl text-purple-400">
+          <div className="p-2 bg-brand/10 rounded-xl text-brand">
             <Calendar className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-sans font-semibold text-slate-100 text-sm tracking-tight">AI calendar & Timeblock</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Integrate tasks with core daily appointments</p>
+            <h3 className="font-display font-bold text-text text-sm tracking-tight">AI Calendar & Timeblock</h3>
+            <p className="text-xs text-text-sub mt-0.5 font-light">Integrate tasks with core daily appointments</p>
           </div>
         </div>
 
         {/* Day switch sliders */}
-        <div className="flex items-center gap-1.5 self-end md:self-center bg-white/5 border border-white/5 p-1 rounded-full">
+        <div className="flex items-center gap-1.5 self-end md:self-center bg-zinc-900/50 border border-border p-1 rounded-full">
           <button
             onClick={() => setSelectedDay(0)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-              selectedDay === 0 ? 'bg-zinc-950 text-purple-400 border border-purple-500/10' : 'text-slate-400 hover:text-slate-200'
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
+              selectedDay === 0 ? 'bg-zinc-950 text-brand border border-brand/10 font-bold' : 'text-text-sub hover:text-text'
             }`}
           >
             Today
           </button>
           <button
             onClick={() => setSelectedDay(1)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-              selectedDay === 1 ? 'bg-zinc-950 text-purple-400 border border-purple-500/10' : 'text-slate-400 hover:text-slate-200'
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
+              selectedDay === 1 ? 'bg-zinc-950 text-brand border border-brand/10 font-bold' : 'text-text-sub hover:text-text'
             }`}
           >
             Tomorrow
@@ -116,19 +116,19 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="p-4 rounded-xl border border-amber-500/20 bg-amber-950/20 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3"
+          className="p-4 rounded-xl border border-urgent/25 bg-urgent/10 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3"
         >
-          <div className="flex items-start gap-2 text-amber-300">
+          <div className="flex items-start gap-2 text-urgent">
             <AlertTriangle className="w-5 h-5 flex-shrink-0 animate-bounce" />
             <div>
-              <span className="font-bold uppercase tracking-wider block text-[10px]">Overlapping Deadline Threat Detected</span>
-              <p className="mt-0.5 text-amber-200/90 font-light">{conflicts[0].description}</p>
+              <span className="font-bold uppercase tracking-wider block text-[10px] font-mono">Overlapping Deadline Threat Detected</span>
+              <p className="mt-0.5 text-text-sub font-light">{conflicts[0].description}</p>
             </div>
           </div>
           <button
             onClick={handleResolveConflict}
             disabled={isRescheduling}
-            className="px-3.5 py-1.5 self-end md:self-center bg-amber-500 text-zinc-950 hover:bg-amber-400 rounded-full font-bold tracking-wide text-[10px] cursor-pointer transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-1.5 self-end md:self-center bg-urgent hover:bg-amber-400 text-zinc-950 rounded-full font-bold tracking-wide text-[10px] cursor-pointer transition-colors flex items-center gap-1.5"
           >
             {isRescheduling ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -142,66 +142,66 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
 
       {/* 24-Hour Timeline visualizer */}
       <div className="space-y-3">
-        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 block">
+        <span className="text-[10px] uppercase font-bold tracking-widest text-muted block font-mono">
           Timeline — {dateString}
         </span>
 
-        <div className="border border-white/5 bg-zinc-950/20 rounded-xl divide-y divide-white/5">
+        <div className="border border-border bg-zinc-950/20 rounded-xl divide-y divide-border">
           {/* Morning Row */}
           <div className="p-3.5 flex items-start gap-4">
-            <span className="font-mono text-xs text-slate-500 w-12 pt-1 flex-shrink-0">09:00</span>
+            <span className="font-mono text-xs text-muted w-12 pt-1 flex-shrink-0 font-bold">09:00</span>
             <div className="flex-1 space-y-2">
-              <div className="bg-blue-500/5 border border-blue-500/10 p-2 rounded-lg">
-                <span className="font-mono text-[9px] text-blue-400 uppercase tracking-wider block">Meeting block</span>
-                <span className="text-xs font-semibold text-slate-200">Daily Standup Alignment</span>
+              <div className="bg-brand/5 border border-brand/15 p-2 rounded-lg">
+                <span className="font-mono text-[9px] text-brand uppercase tracking-wider block font-bold">Meeting block</span>
+                <span className="text-xs font-semibold text-text">Daily Standup Alignment</span>
               </div>
             </div>
           </div>
 
           {/* Midday Row */}
           <div className="p-3.5 flex items-start gap-4">
-            <span className="font-mono text-xs text-slate-500 w-12 pt-1 flex-shrink-0">12:00</span>
+            <span className="font-mono text-xs text-muted w-12 pt-1 flex-shrink-0 font-bold">12:00</span>
             <div className="flex-1 space-y-2">
               {dailyEvents.find(e => new Date(e.start).getHours() === 12) ? (
-                <div className="bg-blue-500/5 border border-blue-500/10 p-2 rounded-lg">
-                  <span className="font-mono text-[9px] text-blue-400 uppercase tracking-wider block">Meeting block</span>
-                  <span className="text-xs font-semibold text-slate-200">Lunch & Project Regroup</span>
+                <div className="bg-brand/5 border border-brand/15 p-2 rounded-lg">
+                  <span className="font-mono text-[9px] text-brand uppercase tracking-wider block font-bold">Meeting block</span>
+                  <span className="text-xs font-semibold text-text">Lunch & Project Regroup</span>
                 </div>
               ) : (
-                <span className="text-xs text-slate-600 italic block pt-1">No appointments</span>
+                <span className="text-xs text-muted italic block pt-1 font-light">No appointments</span>
               )}
             </div>
           </div>
 
           {/* Afternoon Row */}
           <div className="p-3.5 flex items-start gap-4">
-            <span className="font-mono text-xs text-slate-500 w-12 pt-1 flex-shrink-0">15:00</span>
+            <span className="font-mono text-xs text-muted w-12 pt-1 flex-shrink-0 font-bold">15:00</span>
             <div className="flex-1 space-y-2">
               {dailyTasks.length > 0 ? (
                 dailyTasks.map(task => (
-                  <div key={task.id} className="bg-purple-500/5 border border-purple-500/15 p-2.5 rounded-lg flex items-center justify-between">
+                  <div key={task.id} className="bg-brand/5 border border-brand/20 p-2.5 rounded-lg flex items-center justify-between">
                     <div>
-                      <span className="font-mono text-[9px] text-purple-400 uppercase tracking-wider block">Target deadline</span>
-                      <span className="text-xs font-semibold text-slate-200">{task.title}</span>
+                      <span className="font-mono text-[9px] text-brand uppercase tracking-wider block font-bold">Target deadline</span>
+                      <span className="text-xs font-semibold text-text">{task.title}</span>
                     </div>
-                    <span className="text-[10px] font-mono text-rose-400 font-semibold bg-rose-500/10 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-mono text-crisis font-bold bg-crisis/10 px-1.5 py-0.5 rounded">
                       Exp. Score: {task.urgencyScore}
                     </span>
                   </div>
                 ))
               ) : (
-                <span className="text-xs text-slate-600 italic block pt-1">No scheduled task deadlines</span>
+                <span className="text-xs text-muted italic block pt-1 font-light">No scheduled task deadlines</span>
               )}
             </div>
           </div>
 
           {/* Evening Row */}
           <div className="p-3.5 flex items-start gap-4">
-            <span className="font-mono text-xs text-slate-500 w-12 pt-1 flex-shrink-0">18:00</span>
+            <span className="font-mono text-xs text-muted w-12 pt-1 flex-shrink-0 font-bold">18:00</span>
             <div className="flex-1 space-y-2">
-              <div className="bg-emerald-500/5 border border-emerald-500/10 p-2 rounded-lg">
-                <span className="font-mono text-[9px] text-emerald-400 uppercase tracking-wider block">Personal block</span>
-                <span className="text-xs font-semibold text-slate-200">Gym workout & Decompress</span>
+              <div className="bg-success/5 border border-success/15 p-2 rounded-lg">
+                <span className="font-mono text-[9px] text-success uppercase tracking-wider block font-bold">Personal block</span>
+                <span className="text-xs font-semibold text-text">Gym workout & Decompress</span>
               </div>
             </div>
           </div>

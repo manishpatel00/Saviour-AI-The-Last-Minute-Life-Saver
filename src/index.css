@@ -1,11 +1,66 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500;600&family=Lora:ital,wght@0,300..400;1,300..400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", sans-serif;
-  --font-serif: "Lora", Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: "Oswald", sans-serif;
+  --font-sans:    "JetBrains Mono", monospace;
+  --font-mono:    "JetBrains Mono", monospace;
+
+  --color-bg:         #0d0d0d;
+  --color-surface:    #121212;
+  --color-border:     #222222;
+  --color-brand:      #00ff41;
+  --color-urgent:     #ff9f00;
+  --color-crisis:     #ff3e3e;
+  --color-success:    #00ff41;
+  --color-muted:      #666666;
+  --color-text:       #e0e0e0;
+  --color-text-sub:   #888888;
+}
+
+/* Flicker animation for retro CRT terminal feel */
+@keyframes flicker {
+  0% { opacity: 0.98; }
+  50% { opacity: 1; }
+  100% { opacity: 0.99; }
+}
+.flicker {
+  animation: flicker 0.15s infinite;
+}
+
+/* Custom Scanline screen overlay */
+.scanlines {
+  position: relative;
+}
+.scanlines::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 4px, 6px 100%;
+  z-index: 999;
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+/* Terminal Corner Brackets */
+.corner {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--color-brand);
+}
+.corner-tl { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.corner-tr { top: -1px; right: -1px; border-left: 0; border-bottom: 0; }
+.corner-bl { bottom: -1px; left: -1px; border-right: 0; border-top: 0; }
+.corner-br { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+/* Custom Glow effects */
+.glow-accent {
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.4);
+}
+.glow-danger {
+  text-shadow: 0 0 10px rgba(255, 62, 62, 0.4);
 }
 
 /* Sophisticated Dot Grid Pattern background class */
@@ -27,4 +82,76 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* URGENCY PULSE — the signature element */
+@keyframes urgency-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+.ring-pulse {
+  animation: urgency-pulse 2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-pulse { animation: none; }
+}
+
+/* SHIMMER — XP bar and skeleton */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+.xp-shimmer {
+  background: linear-gradient(90deg, #6366F1 0%, #818CF8 50%, #6366F1 100%);
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #18181B 0%, #27272A 50%, #18181B 100%);
+  background-size: 200% auto;
+  animation: shimmer 1.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .xp-shimmer, .skeleton-shimmer { animation: none; }
+}
+
+/* BADGE SHINE */
+.badge-shine {
+  position: relative;
+  overflow: hidden;
+}
+.badge-shine::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.08) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+.badge-shine:hover::before {
+  transform: translateX(100%);
+}
+
+/* FOCUS VISIBLE — keyboard accessibility */
+*:focus-visible {
+  outline: 2px solid #6366F1;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* MOBILE SCROLLABLE TAB STRIP */
+.tab-strip-scroll {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 8px;
+  padding: 4px;
+}
+.tab-strip-scroll::-webkit-scrollbar { display: none; }
+.tab-strip-scroll > button { 
+  scroll-snap-align: center;
+  flex-shrink: 0;
+  white-space: nowrap;
 }

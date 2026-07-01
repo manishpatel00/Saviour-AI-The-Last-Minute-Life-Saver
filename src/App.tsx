@@ -22,21 +22,37 @@ import { createGoogleCalendarEvent, createGmailDraft } from './lib/workspace';
 import { saveUserDataToCloud, loadUserDataFromCloud } from './lib/sync';
 import { User } from 'firebase/auth';
 
+function sanitizeUniqueIds<T extends { id: string }>(items: T[]): T[] {
+  if (!Array.isArray(items)) return [];
+  const seen = new Set<string>();
+  return items.map((item, index) => {
+    let id = item.id;
+    if (!id) {
+      id = `gen_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 7)}`;
+    }
+    while (seen.has(id)) {
+      id = `${id}_dup_${Math.random().toString(36).substring(2, 7)}`;
+    }
+    seen.add(id);
+    return { ...item, id };
+  });
+}
+
 export default function App() {
   // --- Local Storage Hydration States ---
   const [tasks, setTasks] = useState<Task[]>(() => {
     const saved = localStorage.getItem('last_minute_tasks');
-    return saved ? JSON.parse(saved) : INITIAL_TASKS;
+    return sanitizeUniqueIds(saved ? JSON.parse(saved) : INITIAL_TASKS);
   });
 
   const [goals, setGoals] = useState<Goal[]>(() => {
     const saved = localStorage.getItem('last_minute_goals');
-    return saved ? JSON.parse(saved) : INITIAL_GOALS;
+    return sanitizeUniqueIds(saved ? JSON.parse(saved) : INITIAL_GOALS);
   });
 
   const [badges, setBadges] = useState<Badge[]>(() => {
     const saved = localStorage.getItem('last_minute_badges');
-    return saved ? JSON.parse(saved) : INITIAL_BADGES;
+    return sanitizeUniqueIds(saved ? JSON.parse(saved) : INITIAL_BADGES);
   });
 
   const [stats, setStats] = useState<UserStats>(() => {
@@ -54,8 +70,7 @@ export default function App() {
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = localStorage.getItem('last_minute_messages');
-    if (saved) return JSON.parse(saved);
-    return [
+    return sanitizeUniqueIds(saved ? JSON.parse(saved) : [
       {
         id: 'welcome_m',
         sender: 'agent',
@@ -76,10 +91,11 @@ export default function App() {
           }
         ]
       }
-    ];
+    ]);
   });
 
   const [activeTab, setActiveTab] = useState<'board' | 'pomodoro' | 'schedule' | 'habits'>('board');
+  const [badgesExpanded, setBadgesExpanded] = useState<boolean>(true);
   const [chatGenerating, setChatGenerating] = useState(false);
   const [unlockedBadge, setUnlockedBadge] = useState<Badge | null>(null);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
@@ -90,7 +106,7 @@ export default function App() {
   const handleAddGoal = (newGoalData: Omit<Goal, 'id' | 'streak' | 'completedDates'>) => {
     const newGoal: Goal = {
       ...newGoalData,
-      id: `goal_${Date.now()}`,
+      id: `goal_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       streak: 0,
       completedDates: []
     };
@@ -116,8 +132,7 @@ export default function App() {
   // --- Notifications State ---
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     const saved = localStorage.getItem('last_minute_notifications');
-    if (saved) return JSON.parse(saved);
-    return [
+    return sanitizeUniqueIds(saved ? JSON.parse(saved) : [
       {
         id: 'init_n1',
         title: '⚠️ CRITICAL DEADLINE RISK DETECTED',
@@ -134,7 +149,7 @@ export default function App() {
         createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
         read: false
       }
-    ];
+    ]);
   });
 
   // --- Persistence Side Effect ---
@@ -176,11 +191,11 @@ export default function App() {
         try {
           const cloudData = await loadUserDataFromCloud(firebaseUser.uid);
           if (cloudData) {
-            if (cloudData.tasks) setTasks(cloudData.tasks);
-            if (cloudData.goals) setGoals(cloudData.goals);
-            if (cloudData.badges) setBadges(cloudData.badges);
+            if (cloudData.tasks) setTasks(sanitizeUniqueIds(cloudData.tasks));
+            if (cloudData.goals) setGoals(sanitizeUniqueIds(cloudData.goals));
+            if (cloudData.badges) setBadges(sanitizeUniqueIds(cloudData.badges));
             if (cloudData.stats) setStats(cloudData.stats);
-            if (cloudData.notifications) setNotifications(cloudData.notifications);
+            if (cloudData.notifications) setNotifications(sanitizeUniqueIds(cloudData.notifications));
           }
         } catch (err) {
           console.error("Cloud hydration failed:", err);
@@ -235,20 +250,34 @@ export default function App() {
       let newXp = prev.xp + amount;
       let newLevel = prev.level;
       const xpNeeded = newLevel * 200;
+      let leveledUp = false;
 
       if (newXp >= xpNeeded) {
         newXp -= xpNeeded;
         newLevel += 1;
-        // Level up announcement in chat
-        setMessages(m => [
-          ...m,
-          {
-            id: `lvl_${Date.now()}`,
-            sender: 'agent',
-            text: `🎉 LEVEL UP! You have advanced to Level ${newLevel}! Your productivity threshold has increased. Continue the momentum to unlock exclusive badges!`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }
-        ]);
+        leveledUp = true;
+      }
+
+      if (leveledUp) {
+        const nextLevel = newLevel;
+        setTimeout(() => {
+          setMessages(m => {
+            const id = `lvl_${nextLevel}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+            // Check if level-up message for this level already exists to prevent duplicate renders
+            if (m.some(msg => msg.id.startsWith(`lvl_${nextLevel}_`))) {
+              return m;
+            }
+            return [
+              ...m,
+              {
+                id,
+                sender: 'agent',
+                text: `🎉 LEVEL UP! You have advanced to Level ${nextLevel}! Your productivity threshold has increased. Continue the momentum to unlock exclusive badges!`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              }
+            ];
+          });
+        }, 0);
       }
 
       return {
@@ -343,7 +372,7 @@ export default function App() {
       
       if (data.breakdown) {
         const subtasks: SubTask[] = data.breakdown.map((title: string, idx: number) => ({
-          id: `sub_${taskId}_${idx}_${Date.now()}`,
+          id: `sub_${taskId}_${idx}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           title,
           completed: false
         }));
@@ -355,7 +384,7 @@ export default function App() {
         setMessages(m => [
           ...m,
           {
-            id: `sys_${Date.now()}`,
+            id: `sys_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             sender: 'agent',
             text: `🎯 Saviour AI Autocut Complete: I have broken down "${task.title}" into ${subtasks.length} actionable micro-milestones inside your checklist. Let's finish them!`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -391,7 +420,7 @@ export default function App() {
         setMessages(m => [
           ...m,
           {
-            id: `sys_${Date.now()}`,
+            id: `sys_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             sender: 'agent',
             text: `📋 Saviour AI Mitigation Draft Ready! I have configured a highly optimized delay blueprint for "${task.title}". Expand the task details to view and copy it.`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -416,7 +445,7 @@ export default function App() {
         setMessages(m => [
           ...m,
           {
-            id: `sched_${Date.now()}`,
+            id: `sched_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             sender: 'agent',
             text: `📅 AI Autopilot Timeline Optimization completed:\n\n${data.message}`,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -446,7 +475,7 @@ export default function App() {
     setMessages(m => [
       ...m,
       {
-        id: `pomo_${Date.now()}`,
+        id: `pomo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         sender: 'agent',
         text: `🧘 Phenomenal Focus session complete! You focused on your selected task for 25 minutes. Added 40 XP to your level progression.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -458,7 +487,7 @@ export default function App() {
   // --- Chat companion controller ---
   const handleSendMessage = async (text: string) => {
     const userMsg: ChatMessage = {
-      id: `usr_${Date.now()}`,
+      id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       sender: 'user',
       text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -482,7 +511,7 @@ export default function App() {
         setMessages(prev => [
           ...prev,
           {
-            id: `agt_${Date.now()}`,
+            id: `agt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
             sender: 'agent',
             text: data.message,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -770,29 +799,44 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-slate-100 flex flex-col relative selection:bg-blue-500/30 selection:text-white antialiased overflow-x-hidden">
+    <div className="min-h-screen bg-bg text-text flex flex-col relative selection:bg-brand/30 selection:text-white antialiased overflow-x-hidden font-sans scanlines flicker">
       
-      {/* Background Pattern: Dot Grid + Gradient Ambient Lights */}
+      {/* Background Pattern: Terminal Grid and digital elements */}
       <div className="absolute inset-0 pointer-events-none -z-10">
         <div className="absolute inset-0 bg-dot-grid" />
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/10 blur-[120px] rounded-full" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-brand/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-crisis/5 blur-[120px] rounded-full" />
       </div>
 
-      {/* Header bar branding */}
-      <nav className="border-b border-white/5 bg-zinc-950/25 backdrop-blur-md sticky top-0 z-40 py-5">
-        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 flex items-center justify-between">
+      {/* Retro CRT System Terminal Header */}
+      <nav className="h-[56px] sm:h-[64px] border-b-2 border-border bg-black sticky top-0 z-40 flex items-center">
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/10">
-              <Shield className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 bg-brand/10 border border-brand/30 rounded flex items-center justify-center animate-pulse">
+              <Shield className="w-4.5 h-4.5 text-brand" />
             </div>
             <div>
-              <span className="font-display font-bold text-lg tracking-tight uppercase text-white block">Saviour AI</span>
-              <span className="text-[9px] uppercase font-mono text-white/50 tracking-widest block">Last-Minute Life Saver</span>
+              <span className="font-display font-bold text-base tracking-widest text-brand block uppercase glow-accent">SAVIOUR.OS // PROTOCOL-v2.6</span>
+              <span className="text-[9px] uppercase font-mono text-muted tracking-widest hidden sm:block font-bold">Autonomous Life Sentinel Active</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-4">
+            {/* System Info Indicators - Desktop Only */}
+            <div className="hidden md:flex items-center gap-6 text-[11px] font-mono border-l border-border pl-6 text-text-sub font-bold">
+              <div>
+                USER: <span className="text-text">{user?.email ? user.email.split('@')[0].toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 15) : 'OPERATIVE_742'}</span>
+              </div>
+              <div>
+                STATUS: <span className={user ? "text-brand animate-pulse" : "text-urgent animate-pulse"}>
+                  {user ? 'ACTIVE_MITIGATION' : 'AWAITING_AUTH'}
+                </span>
+              </div>
+              <div>
+                XP: <span className="text-white">{String(stats.xp).padStart(5, '0')}/{String(stats.level * 200).padStart(5, '0')}</span>
+              </div>
+            </div>
+
             {/* Notification Center Bell dropdown */}
             <NotificationCenter
               notifications={notifications}
@@ -805,25 +849,25 @@ export default function App() {
 
             {/* Google Authentication Section */}
             {user ? (
-              <div className="flex items-center gap-2.5 bg-zinc-900/60 border border-white/5 pl-2.5 pr-3.5 py-1.5 rounded-full backdrop-blur-md">
+              <div className="flex items-center gap-2 bg-zinc-950 border border-border pl-2 pr-3 py-1 rounded backdrop-blur-md max-w-[120px] sm:max-w-none">
                 {user.photoURL ? (
                   <img
                     src={user.photoURL}
                     alt={user.displayName || 'Profile'}
-                    className="w-5 h-5 rounded-full border border-white/20"
+                    className="w-5 h-5 rounded border border-brand/30"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-[10px]">
+                  <div className="w-5 h-5 rounded bg-brand/10 border border-brand/30 text-brand flex items-center justify-center font-bold text-[10px]">
                     {user.email?.[0].toUpperCase()}
                   </div>
                 )}
-                <span className="text-[11px] font-medium text-slate-300 max-w-[90px] truncate hidden sm:inline">
-                  {user.displayName || user.email}
+                <span className="text-[11px] font-bold font-mono text-slate-300 truncate hidden sm:inline-block max-w-[90px]">
+                  {user.displayName?.split(' ')[0] || user.email?.split('@')[0]}
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors cursor-pointer"
+                  className="text-muted hover:text-crisis p-0.5 rounded transition-colors cursor-pointer flex-shrink-0"
                   title="Sign Out"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -835,33 +879,49 @@ export default function App() {
                 size="sm"
                 onClick={handleGoogleLogin}
                 disabled={isLoggingIn}
-                className="!py-1.5 !px-3.5 text-xs bg-gradient-to-r from-blue-600 to-purple-600 border border-white/10"
+                className="font-mono text-xs max-w-[120px] sm:max-w-none truncate"
               >
-                {isLoggingIn ? 'Signing in...' : 'Sign In with Google'}
+                {isLoggingIn ? 'AUTHENTICATING...' : 'AUTHENTICATE'}
               </CTAButton>
             )}
-
-            {/* XP status chip */}
-            <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full text-xs text-slate-300 backdrop-blur-sm">
-              <Flame className="w-3.5 h-3.5 text-blue-400" />
-              <span className="font-mono text-xs">Level {stats.level}</span>
-            </div>
           </div>
         </div>
       </nav>
 
-      {/* Hero Headings Section (Sophisticated Dark Typographic Layout) */}
-      <header className="max-w-5xl mx-auto px-6 text-center pt-16 pb-12 space-y-4 relative z-10">
-        <PillBadge text="Proactive Productivity Guardian • Hackathon First-Place" className="mx-auto" />
-        
-        <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-[0.95] max-w-4xl mx-auto mb-6">
-          Defeat deadlines with <br/>
-          <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">autonomous</span> <span className="italic font-serif font-light text-white/90 drop-shadow-sm">agents</span>
+      {/* Hero Headings Section (High-Contrast System Terminal Cover Layout) */}
+      <header className="max-w-5xl mx-auto px-6 text-center pt-16 pb-12 space-y-4 relative z-10 flex flex-col items-center border-b border-dashed border-border mb-12 w-full">
+        <div className="text-brand font-mono text-xs uppercase font-bold tracking-widest glow-accent">[SYSTEM.OVERRIDE_ENABLED]</div>
+        <h1 className="font-display tracking-tight leading-[0.95] max-w-5xl mx-auto mb-4 flex flex-col text-center">
+          <span className="text-white font-bold text-[40px] sm:text-[72px] xl:text-[84px] block uppercase">DEFEAT DEADLINES</span>
+          <span className="text-brand font-bold text-[44px] sm:text-[76px] xl:text-[90px] block uppercase tracking-tight glow-accent">BEFORE THEY DEFEAT YOU.</span>
         </h1>
         
-        <p className="text-gray-400 text-sm md:text-base max-w-2xl mx-auto font-light leading-relaxed">
-          Saviour AI proactively plans, prioritizes, and executes your tasks before you even check your calendar. Built for high-performance teams.
+        <p className="font-mono text-xs text-muted uppercase tracking-wider font-bold max-w-xl mx-auto leading-relaxed">
+          DEPLOYING 5 AUTONOMOUS AGENTS TO GUARD PROJECT INTEGRITY.
         </p>
+
+        {/* Hero CTA row */}
+        <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full sm:w-auto px-4 justify-center font-mono">
+          <CTAButton
+            variant="primary"
+            size="lg"
+            onClick={() => {
+              const element = document.getElementById('active-feature-tab');
+              element?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="w-full sm:w-auto font-display font-bold uppercase tracking-wider text-xs"
+          >
+            Start protecting deadlines →
+          </CTAButton>
+          <CTAButton
+            variant="ghost"
+            size="lg"
+            onClick={() => setShowOnboarding(true)}
+            className="w-full sm:w-auto text-muted hover:text-brand font-display font-bold uppercase tracking-wider text-xs"
+          >
+            See how agents work
+          </CTAButton>
+        </div>
       </header>
 
       {/* Main split dashboard stage */}
@@ -895,50 +955,74 @@ export default function App() {
             />
 
             {/* Feature tab switcher buttons */}
-            <div id="active-feature-tab" className="flex items-center gap-1 bg-zinc-950/40 border border-white/5 p-1 rounded-2xl backdrop-blur-md">
+            <div id="active-feature-tab" className="tab-strip-scroll sm:flex sm:overflow-visible sm:snap-none bg-zinc-950 border border-border p-1 rounded-2xl">
               <button
                 onClick={() => setActiveTab('board')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                className={`relative flex-1 max-w-[160px] py-2.5 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all ${
                   activeTab === 'board' 
-                    ? 'bg-zinc-900 text-slate-100 border border-white/10 shadow-lg shadow-black/40' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'bg-zinc-900 text-text border border-border shadow-lg font-bold' 
+                    : 'text-text-sub hover:text-text hover:bg-zinc-900/50'
                 }`}
               >
                 <Layers className="w-4 h-4" />
                 Deadlines Checklist
+                {activeTab === 'board' && (
+                  <motion.div
+                    layoutId="tabIndicator"
+                    className="absolute bottom-0 left-4 right-4 h-[2px] bg-brand rounded-full"
+                  />
+                )}
               </button>
               <button
                 onClick={() => setActiveTab('pomodoro')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                className={`relative flex-1 max-w-[160px] py-2.5 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all ${
                   activeTab === 'pomodoro' 
-                    ? 'bg-zinc-900 text-slate-100 border border-white/10 shadow-lg shadow-black/40' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'bg-zinc-900 text-text border border-border shadow-lg font-bold' 
+                    : 'text-text-sub hover:text-text hover:bg-zinc-900/50'
                 }`}
               >
                 <Timer className="w-4 h-4" />
                 Pomodoro Rescue
+                {activeTab === 'pomodoro' && (
+                  <motion.div
+                    layoutId="tabIndicator"
+                    className="absolute bottom-0 left-4 right-4 h-[2px] bg-brand rounded-full"
+                  />
+                )}
               </button>
               <button
                 onClick={() => setActiveTab('schedule')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                className={`relative flex-1 max-w-[160px] py-2.5 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all ${
                   activeTab === 'schedule' 
-                    ? 'bg-zinc-900 text-slate-100 border border-white/10 shadow-lg shadow-black/40' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'bg-zinc-900 text-text border border-border shadow-lg font-bold' 
+                    : 'text-text-sub hover:text-text hover:bg-zinc-900/50'
                 }`}
               >
                 <Calendar className="w-4 h-4" />
                 AI Autopilot Timeline
+                {activeTab === 'schedule' && (
+                  <motion.div
+                    layoutId="tabIndicator"
+                    className="absolute bottom-0 left-4 right-4 h-[2px] bg-brand rounded-full"
+                  />
+                )}
               </button>
               <button
                 onClick={() => setActiveTab('habits')}
-                className={`flex-1 py-2.5 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                className={`relative flex-1 max-w-[160px] py-2.5 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer transition-all ${
                   activeTab === 'habits' 
-                    ? 'bg-zinc-900 text-slate-100 border border-white/10 shadow-lg shadow-black/40' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                    ? 'bg-zinc-900 text-text border border-border shadow-lg font-bold' 
+                    : 'text-text-sub hover:text-text hover:bg-zinc-900/50'
                 }`}
               >
                 <Flame className="w-4 h-4" />
                 Habits & Recurrence
+                {activeTab === 'habits' && (
+                  <motion.div
+                    layoutId="tabIndicator"
+                    className="absolute bottom-0 left-4 right-4 h-[2px] bg-brand rounded-full"
+                  />
+                )}
               </button>
             </div>
 
@@ -993,42 +1077,63 @@ export default function App() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Unlocked Badges Drawer row */}
-            <div className="bg-zinc-950/20 border border-white/5 rounded-2xl p-5 space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                <Award className="w-4 h-4 text-purple-400" />
-                Achieved Badges & Trophies
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {badges.map((badge) => {
-                  const isUnlocked = badge.unlockedAt !== null;
-                  return (
-                    <div
-                      key={badge.id}
-                      className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 ${
-                        isUnlocked
-                          ? 'bg-purple-950/15 border-purple-500/20 shadow-md'
-                          : 'bg-zinc-900/[0.05] border-white/5 opacity-50'
-                      }`}
-                    >
-                      <div className={`p-2 rounded-xl flex items-center justify-center ${
-                        isUnlocked ? 'bg-purple-500/10 text-purple-400' : 'bg-white/5 text-slate-500'
-                      }`}>
-                        <Award className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <span className="block font-medium text-xs text-slate-200">{badge.title}</span>
-                        <span className="text-[9px] text-slate-500 block mt-0.5 max-w-[100px] leading-tight mx-auto">{badge.description}</span>
-                      </div>
+            {/* Unlocked Badges Drawer row (Collapsible) */}
+            <div className="bg-surface border border-border rounded-2xl p-5 space-y-4 font-sans">
+              <button
+                onClick={() => setBadgesExpanded(!badgesExpanded)}
+                className="w-full text-left text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between gap-2 cursor-pointer group"
+              >
+                <span className="flex items-center gap-2">
+                  <Award className="w-4 h-4 text-indigo-400" />
+                  Achieved Badges & Trophies
+                </span>
+                <span className="text-[10px] text-zinc-500 group-hover:text-zinc-300 transition-colors">
+                  {badgesExpanded ? 'Collapse ▲' : 'Expand ▼'}
+                </span>
+              </button>
+              
+              <AnimatePresence initial={false}>
+                {badgesExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                      {badges.map((badge) => {
+                        const isUnlocked = badge.unlockedAt !== null;
+                        return (
+                          <div
+                            key={badge.id}
+                            className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 ${
+                              isUnlocked
+                                ? 'bg-indigo-950/10 border-indigo-500/25 shadow-md badge-shine'
+                                : 'bg-zinc-950/50 border-zinc-800/50 opacity-45 grayscale'
+                            }`}
+                          >
+                            <div className={`p-2 rounded-xl flex items-center justify-center ${
+                              isUnlocked ? 'bg-indigo-500/10 text-indigo-400' : 'bg-white/5 text-slate-500'
+                            }`}>
+                              <Award className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <span className="block font-medium text-xs text-slate-200">{badge.title}</span>
+                              <span className="text-[9px] text-slate-500 block mt-0.5 max-w-[100px] leading-tight mx-auto">{badge.description}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
-          {/* Right panel (Draggable AI Chat Sentinel) - Takes 4 columns */}
-          <div className="lg:col-span-4 lg:sticky lg:top-24 h-[650px]">
+          {/* Right panel (AI Chat Companion) - Takes 4 columns */}
+          <div id="ai-agent-panel" className="lg:col-span-4 lg:sticky lg:top-24 h-[420px] lg:h-[650px]">
             <AIAgentCompanion
               messages={messages}
               onSendMessage={handleSendMessage}
@@ -1086,6 +1191,20 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Mobile FAB for AI Agent Companion smooth-scroll access */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 1, type: 'spring', stiffness: 260, damping: 20 }}
+        onClick={() => {
+          document.getElementById('ai-agent-panel')?.scrollIntoView({ behavior: 'smooth' });
+        }}
+        className="fixed bottom-6 right-6 z-50 w-[52px] h-[52px] rounded-full bg-brand hover:bg-indigo-500 text-white flex items-center justify-center shadow-[0_8px_32px_rgba(99,102,241,0.45)] lg:hidden cursor-pointer"
+        aria-label="Open AI Agent"
+      >
+        <Bot className="w-[22px] h-[22px]" />
+      </motion.button>
 
       {/* Symmetrical simple Footer */}
       <footer className="border-t border-white/5 py-8 bg-zinc-950/20 text-center text-[11px] text-slate-500">

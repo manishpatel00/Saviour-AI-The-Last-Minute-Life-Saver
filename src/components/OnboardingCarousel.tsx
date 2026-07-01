@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Bot, Shield, Calendar, Mail, Sparkles, ChevronRight, ChevronLeft, 
-  X, Mic, AlertTriangle, RefreshCw, Check, Flame 
+  Shield, Calendar, Mail, Sparkles, ChevronRight, ChevronLeft, 
+  X, Mic, AlertTriangle 
 } from 'lucide-react';
 
 interface OnboardingCarouselProps {
@@ -20,38 +20,39 @@ export const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
 
   const steps = [
     {
-      title: "🎙️ Real-time Voice Intake",
-      description: "Never spend time typing when you're in a panic. Power up the Voice Intake and speak your raw crisis. Saviour AI handles the parsing instantly.",
-      icon: <Mic className="w-8 h-8 text-blue-400" />,
+      title: "Real-time Voice Intake",
+      description: "Never waste precious seconds typing when in a panic. Power up the voice companion and speak your raw schedule crisis. Saviour AI handles deep parsing instantly.",
+      icon: <Mic className="w-8 h-8 text-indigo-400 pointer-events-none" />,
       tag: "VOICE INTERACTIVE"
     },
     {
-      title: "📅 Context-Aware Calendar Audits",
-      description: "Securely link your Google Calendar. The autonomous coordinator checks your actual calendar and fits preparation sessions dynamically around busy times.",
-      icon: <Calendar className="w-8 h-8 text-purple-400" />,
+      title: "Context-Aware Calendar Audits",
+      description: "Securely sync your Google Calendar. The autonomous coordinator checks real workloads and fits preparation slots dynamically around your existing meetings.",
+      icon: <Calendar className="w-8 h-8 text-indigo-400 pointer-events-none" />,
       tag: "SECURE OAUTH"
     },
     {
-      title: "🚨 Crisis Triage Mode",
-      description: "Turn on Emergency Triage if you missed a deadline. Saviour AI runs immediate diagnostics, gives a 3-step recovery mindset, and drafts delay apology emails.",
-      icon: <AlertTriangle className="w-8 h-8 text-rose-500" />,
+      title: "Crisis Triage Mode",
+      description: "Activate Emergency Triage when milestones slip. Saviour AI runs root-cause diagnostics, serves 3-step action recovery lists, and drafts delay apology emails.",
+      icon: <AlertTriangle className="w-8 h-8 text-rose-400 pointer-events-none" />,
       tag: "CRITICAL DAMAGE CONTROL"
     },
     {
-      title: "✉️ Drafts & Automated Checklists",
-      description: "Generates fully structured email update drafts directly inside your Gmail account and mails high-fidelity, actionable HTML check-lists straight to your inbox.",
-      icon: <Mail className="w-8 h-8 text-emerald-400" />,
+      title: "Drafts & Automated Checklists",
+      description: "Generates professional email drafts inside your Gmail drafts folder and mails high-fidelity checklist checkpoints straight to your personal inbox.",
+      icon: <Mail className="w-8 h-8 text-indigo-400 pointer-events-none" />,
       tag: "AUTONOMOUS AGENTS"
     },
     {
-      title: "🚀 Click Approve & Deploy",
-      description: "Nothing runs silently. Review and tweak slots, edit email drafts, and click 'Deploy' to automatically push all schedules, files, and updates directly into your life.",
-      icon: <Sparkles className="w-8 h-8 text-yellow-400" />,
+      title: "Click Approve & Deploy",
+      description: "Nothing runs silently. Review and tweak slots, edit email templates, and click 'Deploy' to securely inject updates, schedules, and reminders into your life.",
+      icon: <Sparkles className="w-8 h-8 text-amber-400 pointer-events-none" />,
       tag: "HUMAN CLEARANCE GATE"
     }
   ];
 
-  const handleNext = () => {
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (currentStep < steps.length - 1) {
       setCurrentStep(prev => prev + 1);
     } else {
@@ -59,10 +60,16 @@ export const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
     }
   };
 
-  const handlePrev = () => {
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (currentStep > 0) {
       setCurrentStep(prev => prev - 1);
     }
+  };
+
+  const handleCloseClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClose();
   };
 
   return (
@@ -70,120 +77,134 @@ export const OnboardingCarousel: React.FC<OnboardingCarouselProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-[9999] pointer-events-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
     >
       <motion.div
-        initial={{ scale: 0.9, y: 20 }}
+        initial={{ scale: 0.95, y: 15 }}
         animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        className="w-full max-w-2xl bg-zinc-950 border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative"
+        exit={{ scale: 0.95, y: 15 }}
+        className="w-full max-w-2xl bg-surface border border-border rounded-3xl overflow-hidden shadow-2xl relative pointer-events-auto z-[10000] font-sans"
       >
-        {/* Background Ambient Spotlights */}
-        <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-blue-600/10 blur-[100px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-purple-600/10 blur-[100px] rounded-full pointer-events-none" />
+        {/* Ambient background spotlights */}
+        <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-indigo-600/5 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-indigo-500/5 blur-[100px] rounded-full pointer-events-none" />
 
         {/* Close Button */}
         <button
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-slate-400 hover:text-white transition-all cursor-pointer z-10"
+          type="button"
+          onClick={handleCloseClick}
+          className="absolute top-5 right-5 p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all cursor-pointer z-[10010]"
+          aria-label="Close onboarding guide"
         >
-          <X className="w-4 h-4" />
+          <X className="w-4 h-4 pointer-events-none" />
         </button>
 
-        {/* Content Body */}
-        <div className="p-8 sm:p-10 space-y-8">
-          {/* Logo Brand Header */}
+        {/* Modal Container Body */}
+        <div className="p-8 sm:p-10 space-y-8 text-left">
+          
+          {/* Elegant Logo / Brand Header */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/10">
-              <Shield className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 bg-indigo-600/10 border border-indigo-500/30 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/5">
+              <Shield className="w-4 h-4 text-indigo-400" />
             </div>
             <div>
-              <span className="font-display font-bold text-sm tracking-tight uppercase text-white block">Saviour AI Onboarding</span>
-              <span className="text-[8px] uppercase font-mono text-white/50 tracking-widest block">Operational Guidelines</span>
+              <span className="font-display font-extrabold text-sm tracking-tight uppercase text-text block font-sans">Saviour AI Onboarding</span>
+              <span className="text-[9px] uppercase font-mono text-zinc-500 tracking-widest block font-sans">Operational Protocols</span>
             </div>
           </div>
 
-          {/* Stepper Display */}
+          {/* Stepper indicator bar */}
           <div className="flex gap-2">
-            {steps.map((_, idx) => (
-              <div
-                key={idx}
-                className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-                  idx === currentStep ? 'bg-blue-500' : 'bg-white/10'
-                }`}
-              />
-            ))}
+            {steps.map((_, idx) => {
+              const isActive = idx === currentStep;
+              return (
+                <div
+                  key={idx}
+                  className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                    isActive 
+                      ? 'bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]' 
+                      : 'bg-zinc-800'
+                  }`}
+                />
+              );
+            })}
           </div>
 
-          {/* Animated Slide Window */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-6 min-h-[220px]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-white/5 rounded-2xl border border-white/5 shadow-inner">
-                  {steps[currentStep].icon}
+          {/* Step content with animation */}
+          <div className="min-h-[200px] relative">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.22, ease: 'easeInOut' }}
+                className="space-y-5"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="p-3 bg-zinc-900/50 border border-border rounded-2xl flex items-center justify-center">
+                    {steps[currentStep].icon}
+                  </div>
+                  <div>
+                    <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[9px] font-mono font-bold text-indigo-400 tracking-widest uppercase block w-max">
+                      {steps[currentStep].tag}
+                    </span>
+                    <h3 className="text-lg sm:text-xl font-bold tracking-tight text-text mt-1.5 font-sans">
+                      {steps[currentStep].title}
+                    </h3>
+                  </div>
                 </div>
-                <div>
-                  <span className="px-2.5 py-0.5 rounded bg-blue-500/10 text-[9px] font-mono font-bold text-blue-400 tracking-wider">
-                    {steps[currentStep].tag}
-                  </span>
-                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-1">
-                    {steps[currentStep].title}
-                  </h3>
-                </div>
-              </div>
 
-              <p className="text-slate-400 font-light text-sm leading-relaxed sm:text-base">
-                {steps[currentStep].description}
-              </p>
-            </motion.div>
-          </AnimatePresence>
+                <p className="text-zinc-400 font-light text-sm leading-relaxed max-w-xl font-sans">
+                  {steps[currentStep].description}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
-          {/* Call to action for Integration */}
+          {/* Interactive Google Connection Trigger Action */}
           {currentStep === 1 && !isLoggedIn && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 flex flex-col sm:flex-row items-center justify-between gap-4"
+              className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/15 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-left"
             >
-              <div className="text-left space-y-1">
-                <p className="text-xs font-semibold text-white">Google Account Access Requested</p>
-                <p className="text-[11px] text-slate-400 font-light">Calendar scheduling & draft Gmail saves will active safely.</p>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-text">Link Google Account Workspace</p>
+                <p className="text-[11px] text-zinc-400 font-light">Unlocks real calendar auditing and secure auto-drafted Gmail apologies.</p>
               </div>
               <button
-                onClick={() => {
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
                   onConnectGoogle();
                   onClose();
                 }}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-zinc-950 font-bold text-xs rounded-xl shadow-lg shadow-blue-500/10 cursor-pointer transition-all flex-shrink-0"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-full shadow-lg shadow-indigo-600/10 cursor-pointer transition-all flex-shrink-0"
               >
-                Connect Google Account
+                Connect Workspace
               </button>
             </motion.div>
           )}
 
-          {/* Step Controls */}
-          <div className="flex items-center justify-between pt-4 border-t border-white/5">
+          {/* Bottom Navigation Step Controls */}
+          <div className="flex items-center justify-between pt-5 border-t border-border font-sans">
             <button
+              type="button"
               onClick={handlePrev}
               disabled={currentStep === 0}
-              className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+              className="px-4 py-2 text-xs font-semibold text-zinc-500 hover:text-text disabled:text-zinc-800 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
               Back
             </button>
 
             <button
+              type="button"
               onClick={handleNext}
-              className="px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105 active:scale-95"
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-full flex items-center gap-1.5 cursor-pointer transition-all hover:scale-102 active:scale-98 shadow-md shadow-indigo-600/10"
             >
-              {currentStep === steps.length - 1 ? 'Start Operating' : 'Continue'}
+              <span>{currentStep === steps.length - 1 ? 'Start Operating' : 'Continue'}</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

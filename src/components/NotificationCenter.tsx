@@ -89,20 +89,20 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 mt-3 w-80 sm:w-96 bg-zinc-950 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+              className="absolute right-0 mt-3 w-80 sm:w-96 bg-surface border border-border rounded-2xl shadow-2xl z-50 overflow-hidden font-sans"
             >
               {/* Header */}
-              <div className="p-4 border-b border-white/5 flex items-center justify-between bg-zinc-900/30">
+              <div className="p-4 border-b border-border flex items-center justify-between bg-zinc-950/20">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-xs tracking-wider uppercase text-slate-300">Live Sentinel Alerts</span>
-                  <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-[9px] font-mono font-bold text-blue-400">
+                  <span className="font-display font-bold text-xs tracking-wider uppercase text-text">Live Sentinel Alerts</span>
+                  <span className="px-1.5 py-0.5 rounded bg-brand/10 text-[9px] font-mono font-bold text-brand uppercase tracking-wider">
                     REALTIME
                   </span>
                 </div>
                 {unreadCount > 0 && (
                   <button
                     onClick={onMarkAllAsRead}
-                    className="text-[10px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer transition-colors"
+                    className="text-[10px] text-brand hover:text-indigo-300 font-bold cursor-pointer transition-colors"
                   >
                     Mark all read
                   </button>
@@ -110,23 +110,23 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               </div>
 
               {/* Notification List */}
-              <div className="max-h-80 overflow-y-auto divide-y divide-white/5">
+              <div className="max-h-80 overflow-y-auto divide-y divide-border">
                 {notifications.length === 0 ? (
-                  <div className="p-8 text-center text-slate-500 space-y-2">
+                  <div className="p-8 text-center text-muted space-y-2">
                     <Bell className="w-8 h-8 mx-auto stroke-1 opacity-40" />
-                    <p className="text-xs">Your system inbox is clean. No active alerts.</p>
+                    <p className="text-xs font-light">Your system inbox is clean. No active alerts.</p>
                   </div>
                 ) : (
                   notifications.map((n) => (
                     <div
                       key={n.id}
                       className={`p-4 transition-colors flex gap-3 relative group ${
-                        n.read ? 'bg-transparent' : 'bg-white/[0.02]'
+                        n.read ? 'bg-transparent' : 'bg-brand/5'
                       }`}
                     >
                       {/* Left indicator accent color */}
                       {!n.read && (
-                        <div className="absolute top-0 left-0 bottom-0 w-1 bg-blue-500" />
+                        <div className="absolute top-0 left-0 bottom-0 w-1 bg-brand" />
                       )}
 
                       {/* Icon */}
@@ -135,12 +135,12 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                       {/* Content */}
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-start justify-between gap-1">
-                          <h4 className="text-xs font-bold text-slate-200 truncate">{n.title}</h4>
-                          <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">
+                          <h4 className="text-xs font-bold text-text truncate">{n.title}</h4>
+                          <span className="text-[9px] text-muted font-mono flex-shrink-0">
                             {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-400 leading-relaxed font-light">{n.message}</p>
+                        <p className="text-[11px] text-text-sub leading-relaxed font-light">{n.message}</p>
 
                         {/* Interactive integrations (Gmail drafts) */}
                         {accessToken && userEmail && !n.emailSent && (
@@ -148,10 +148,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                             <button
                               onClick={() => handleEmailDraft(n)}
                               disabled={emailSendingId === n.id}
-                              className="px-2 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/15 text-[9px] font-bold text-blue-400 flex items-center gap-1 cursor-pointer transition-colors"
+                              className="px-2.5 py-1 rounded-lg bg-brand/10 hover:bg-brand/20 border border-brand/15 text-[9px] font-bold text-brand flex items-center gap-1 cursor-pointer transition-colors"
                             >
                               {emailSendingId === n.id ? (
-                                <span className="animate-spin w-2.5 h-2.5 border-2 border-blue-400 border-t-transparent rounded-full" />
+                                <span className="animate-spin w-2.5 h-2.5 border-2 border-brand border-t-transparent rounded-full" />
                               ) : (
                                 <Send className="w-2.5 h-2.5" />
                               )}
@@ -161,7 +161,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         )}
 
                         {n.emailSent && (
-                          <div className="pt-1.5 flex items-center gap-1 text-[9px] text-emerald-400 font-semibold font-mono">
+                          <div className="pt-1.5 flex items-center gap-1 text-[9px] text-success font-semibold font-mono">
                             <Check className="w-3 h-3" />
                             <span>Saved to Gmail Inbox Drafts</span>
                           </div>
@@ -173,7 +173,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         {!n.read && (
                           <button
                             onClick={() => onMarkAsRead(n.id)}
-                            className="p-1 rounded bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                            className="p-1 rounded bg-zinc-900 border border-border hover:bg-zinc-800 text-text-sub hover:text-text transition-colors cursor-pointer"
                             title="Mark as read"
                           >
                             <Check className="w-3 h-3" />
@@ -181,7 +181,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         )}
                         <button
                           onClick={() => onClearNotification(n.id)}
-                          className="p-1 rounded bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                          className="p-1 rounded bg-zinc-900 border border-border hover:bg-crisis/25 text-text-sub hover:text-crisis transition-colors cursor-pointer"
                           title="Delete notification"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -193,9 +193,9 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               </div>
 
               {/* Footer status summary */}
-              <div className="p-3 border-t border-white/5 bg-zinc-900/40 text-[10px] text-center text-slate-500">
+              <div className="p-3 border-t border-border bg-zinc-950/40 text-[10px] text-center text-muted font-mono">
                 {accessToken && userEmail ? (
-                  <span className="text-emerald-400 font-mono">Linked with {userEmail}</span>
+                  <span className="text-success font-bold">Linked with {userEmail}</span>
                 ) : (
                   <span>Sign in with Google to enable Gmail email notifications</span>
                 )}
