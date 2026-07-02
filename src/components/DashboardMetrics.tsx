@@ -58,7 +58,7 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         variants={cardsContainerVariants}
         initial="hidden"
         animate="show"
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
       >
         {/* Card 1: Gamified Hero Profile (Level & XP) */}
         <motion.div
@@ -123,7 +123,7 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
           </div>
 
           <div className="mt-4 space-y-3">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5 xs:gap-2">
               <div className="bg-zinc-950 border border-border p-2 rounded text-center">
                 <span className="block font-mono text-base font-bold text-text">{stats.streakDays}d</span>
                 <span className="text-[9px] uppercase tracking-wider text-muted font-bold font-mono">Streak</span>
@@ -216,11 +216,11 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-end md:self-center font-mono">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 self-stretch sm:self-end md:self-center justify-between sm:justify-start font-mono">
             <span className="text-xs text-muted font-bold uppercase">Mitigation required</span>
             <button
               onClick={onSelectPomodoro}
-              className="px-4 py-2 bg-crisis hover:shadow-[0_0_15px_#ff3e3e] text-black font-bold text-xs uppercase cursor-pointer transition-all rounded border border-crisis/30"
+              className="px-4 py-2 bg-crisis hover:shadow-[0_0_15px_#ff3e3e] text-black font-bold text-xs uppercase cursor-pointer transition-all rounded border border-crisis/30 w-full sm:w-auto text-center"
             >
               INITIATE_POMODORO
             </button>

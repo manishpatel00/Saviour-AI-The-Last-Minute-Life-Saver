@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar
 } from 'recharts';
-import { TrendingUp, Flame, Shield, Clock, BarChart3, AlertCircle } from 'lucide-react';
+import { TrendingUp, Flame, Shield, Clock, BarChart3, AlertCircle, Activity } from 'lucide-react';
 
 interface AnalyticsPanelProps {
   stats: {
@@ -49,7 +49,7 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ stats }) => {
       </div>
 
       {/* Bento Grid Metrics Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         {/* Metric 1: Rescue Rate */}
         <div className="p-4 bg-zinc-950/40 border border-white/6 rounded-xl flex flex-col justify-between">
           <div className="flex items-center justify-between text-emerald-400">
@@ -112,13 +112,13 @@ export const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ stats }) => {
 
         {/* Metric 6: Upcoming Risk */}
         <div className="p-4 bg-zinc-950/40 border border-white/6 rounded-xl flex flex-col justify-between">
-          <div className="flex items-center justify-between text-red-400">
+          <div className="flex items-center justify-between text-brand">
             <span className="text-[10px] uppercase font-mono font-bold tracking-wider text-text-sub">Schedule Risk</span>
-            <AlertCircle className="w-3.5 h-3.5" />
+            <Activity className="w-3.5 h-3.5 text-brand" />
           </div>
           <div className="mt-2.5">
             <span className="block text-2xl font-bold font-mono text-white">LOW</span>
-            <span className="text-[10px] text-red-400 font-mono mt-0.5 block">0 overlaps active</span>
+            <span className="text-[10px] text-brand font-mono mt-0.5 block">0 overlaps active</span>
           </div>
         </div>
       </div>

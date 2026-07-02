@@ -70,12 +70,12 @@ export const WorkspaceConnector: React.FC<WorkspaceConnectorProps> = ({
   return (
     <div className="space-y-6 font-sans text-left">
       {/* Tab bar header */}
-      <div className="flex border-b border-white/5 gap-1 pb-px">
+      <div className="flex border-b border-white/5 gap-1 pb-px overflow-x-auto scrollbar-none flex-nowrap sm:flex-wrap">
         {(['all', 'calendar', 'gmail', 'drive'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+            className={`px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer whitespace-nowrap flex-shrink-0 ${
               activeTab === tab
                 ? 'border-brand text-brand bg-brand/5'
                 : 'border-transparent text-muted hover:text-text hover:bg-white/5'
@@ -116,9 +116,9 @@ export const WorkspaceConnector: React.FC<WorkspaceConnectorProps> = ({
               )}
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h4 className="font-semibold text-sm text-text">{user?.displayName || 'Authorized Operative'}</h4>
-                <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono bg-success/10 border border-success/20 text-success font-bold">SECURE CHANNEL</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="font-semibold text-sm text-text whitespace-nowrap">{user?.displayName || 'Authorized Operative'}</h4>
+                <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono bg-success/10 border border-success/20 text-success font-bold whitespace-nowrap">SECURE CHANNEL</span>
               </div>
               <p className="text-xs text-text-sub font-light font-mono">{user?.email}</p>
             </div>
@@ -147,7 +147,7 @@ export const WorkspaceConnector: React.FC<WorkspaceConnectorProps> = ({
       )}
 
       {/* Grid of integration cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         
         {/* Card 1: Google Calendar */}
         {(activeTab === 'all' || activeTab === 'calendar') && (

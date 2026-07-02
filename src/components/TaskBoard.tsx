@@ -447,7 +447,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                   </div>
 
                   {/* Operational Metrics (Risk score & Due In) */}
-                  <div className="flex items-center gap-5 text-xs font-mono">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-mono">
                     <div className="flex items-center gap-1.5">
                       <span className="text-zinc-500 uppercase font-bold text-[10px]">Risk:</span>
                       <span className={`font-bold ${
@@ -543,7 +543,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                             No milestone breakdowns available. Click "Autocut Milestones" to let AI split the workload!
                           </div>
                         ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 mt-1">
                             {task.subtasks.map((st) => (
                               <div
                                 key={st.id}
@@ -674,7 +674,7 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                         </span>
 
                         {/* Action buttons list (mobile scrolls) */}
-                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+                        <div className="flex flex-nowrap md:flex-wrap gap-2 overflow-x-auto md:overflow-visible pb-2 scrollbar-none">
                           <CTAButton
                             variant="secondary"
                             size="sm"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Task, Goal, Badge, ChatMessage, UserStats, SuggestedAction, SubTask, AppNotification } from './types';
 import { INITIAL_TASKS, INITIAL_GOALS, INITIAL_BADGES } from './data';
@@ -16,7 +16,8 @@ import { WorkspaceConnector } from './components/WorkspaceConnector';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { 
   Bot, Sparkles, Flame, CheckCircle, Shield, Award, Calendar, Timer, 
-  Layers, Volume2, Info, BookOpen, LogOut, Check, Mail, Settings, X, RefreshCw
+  Layers, Volume2, Info, BookOpen, LogOut, Check, Mail, Settings, X, RefreshCw,
+  Terminal, Activity
 } from 'lucide-react';
 import { googleSignIn, logout, initAuth } from './lib/auth';
 import { createGoogleCalendarEvent, createGmailDraft, listGoogleCalendarEvents } from './lib/workspace';
@@ -131,6 +132,19 @@ export default function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isInitializingAuth, setIsInitializingAuth] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [scanlineOpacity, setScanlineOpacity] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('terminal_scanline_opacity');
+      if (saved) return parseFloat(saved);
+    }
+    return 0.45; // Retro CRT terminal atmospheric default
+  });
+  const [isFlickerEnabled, setIsFlickerEnabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('terminal_flicker_enabled') !== 'false';
+    }
+    return true;
+  });
 
   // --- Google Calendar Sync States ---
   const [isCalendarSyncing, setIsCalendarSyncing] = useState(false);
@@ -586,8 +600,8 @@ export default function App() {
         setNotifications(prev => [newNotif, ...prev]);
       }
     } catch (err: any) {
-      console.error("Authentication error details:", err);
       if (err?.code === 'auth/popup-closed-by-user' || err?.message?.includes('popup-closed-by-user')) {
+        console.warn("Authentication cancelled by user.");
         const newNotif: AppNotification = {
           id: `login_cancelled_${Date.now()}`,
           title: '🔑 SIGN-IN CANCELLED',
@@ -1002,7 +1016,10 @@ export default function App() {
 
   if (isInitializingAuth) {
     return (
-      <div className="min-h-screen bg-[#070708] flex flex-col items-center justify-center relative font-mono scanlines text-center p-6 text-text select-none">
+      <div 
+        className="min-h-screen bg-[#070708] flex flex-col items-center justify-center relative font-mono scanlines text-center p-6 text-text select-none"
+        style={{ '--scanline-opacity': scanlineOpacity } as React.CSSProperties}
+      >
         <div className="space-y-4">
           <div className="w-12 h-12 border-2 border-brand border-t-transparent rounded-full animate-spin mx-auto" />
           <h2 className="text-xs font-semibold tracking-widest text-brand uppercase animate-pulse">
@@ -1016,7 +1033,10 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#070708] text-text flex flex-col relative selection:bg-brand/30 selection:text-white antialiased overflow-x-hidden font-sans scanlines flicker">
+      <div 
+        className={`min-h-screen bg-[#070708] text-text flex flex-col relative selection:bg-brand/30 selection:text-white antialiased overflow-x-hidden font-sans scanlines ${isFlickerEnabled ? 'flicker' : ''}`}
+        style={{ '--scanline-opacity': scanlineOpacity } as React.CSSProperties}
+      >
         {/* Background Pattern */}
         <div className="absolute inset-0 pointer-events-none -z-10">
           <div className="absolute inset-0 bg-dot-grid" />
@@ -1026,10 +1046,11 @@ export default function App() {
 
         {/* Header */}
         <nav className="h-[64px] border-b-2 border-border bg-black flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+          <div className="w-full max-w-7xl xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-brand/10 border border-brand/30 rounded flex items-center justify-center">
-                <Shield className="w-4.5 h-4.5 text-brand" />
+              <div className="w-8 h-8 bg-brand/10 border border-brand/30 rounded flex items-center justify-center relative group">
+                <div className="absolute inset-0 bg-brand/15 blur-[4px] rounded opacity-60" />
+                <Terminal className="w-4.5 h-4.5 text-brand relative z-10" />
               </div>
               <div>
                 <span className="font-sans font-bold text-base tracking-widest text-brand block uppercase">SAVIOUR.OS // BOOT_LOADER</span>
@@ -1067,7 +1088,7 @@ export default function App() {
           </div>
 
           <div className="text-[10px] font-mono text-zinc-500 pt-12 flex items-center justify-center gap-2">
-            <Shield className="w-3.5 h-3.5 text-brand" />
+            <Terminal className="w-3.5 h-3.5 text-brand" />
             <span>AUTHENTICATED PLANS LOAD INSTANTLY & SAFELY TO PREVENT DATA LEAKAGE</span>
           </div>
         </main>
@@ -1076,7 +1097,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-bg text-text flex flex-col relative selection:bg-brand/30 selection:text-white antialiased overflow-x-hidden font-sans scanlines flicker">
+    <div 
+      className={`min-h-screen bg-bg text-text flex flex-col relative selection:bg-brand/30 selection:text-white antialiased overflow-x-hidden font-sans scanlines ${isFlickerEnabled ? 'flicker' : ''}`}
+      style={{ '--scanline-opacity': scanlineOpacity } as React.CSSProperties}
+    >
       
       {/* Background Pattern: Terminal Grid and digital elements */}
       <div className="absolute inset-0 pointer-events-none -z-10">
@@ -1087,10 +1111,11 @@ export default function App() {
 
       {/* Retro CRT System Terminal Header */}
       <nav className="h-[56px] sm:h-[64px] border-b-2 border-border bg-black sticky top-0 z-40 flex items-center">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+        <div className="w-full max-w-7xl xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-brand/10 border border-brand/30 rounded flex items-center justify-center animate-pulse">
-              <Shield className="w-4.5 h-4.5 text-brand" />
+            <div className="w-8 h-8 bg-brand/10 border border-brand/30 rounded flex items-center justify-center relative group">
+              <div className="absolute inset-0 bg-brand/15 blur-[4px] rounded opacity-60 animate-pulse" />
+              <Terminal className="w-4.5 h-4.5 text-brand relative z-10" />
             </div>
             <div>
               <span className="font-display font-bold text-base tracking-widest text-brand block uppercase glow-accent">SAVIOUR.OS // PROTOCOL-v2.6</span>
@@ -1197,7 +1222,7 @@ export default function App() {
       </header>
 
       {/* Main split dashboard stage */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-16">
+      <main className="flex-1 max-w-7xl xl:max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* Left panel (Unifed sequential vertical dashboard feed) - Takes 8 columns */}
@@ -1461,60 +1486,6 @@ export default function App() {
                 onDeleteGoal={handleDeleteGoal}
               />
             </div>
-
-            {/* 8. Achieved Badges drawer (Collapsible) */}
-            <div className="bg-surface border border-border rounded-2xl p-5 space-y-4 font-sans">
-              <button
-                onClick={() => setBadgesExpanded(!badgesExpanded)}
-                className="w-full text-left text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center justify-between gap-2 cursor-pointer group"
-              >
-                <span className="flex items-center gap-2">
-                  <Award className="w-4 h-4 text-indigo-400" />
-                  Unlocked Badges & Trophies
-                </span>
-                <span className="text-[10px] text-zinc-500 group-hover:text-zinc-300 transition-colors">
-                  {badgesExpanded ? 'Collapse ▲' : 'Expand ▼'}
-                </span>
-              </button>
-              
-              <AnimatePresence initial={false}>
-                {badgesExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: 'easeInOut' }}
-                    className="overflow-hidden"
-                  >
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                      {badges.map((badge) => {
-                        const isUnlocked = badge.unlockedAt !== null;
-                        return (
-                          <div
-                            key={badge.id}
-                            className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 ${
-                              isUnlocked
-                                ? 'bg-indigo-950/10 border-indigo-500/25 shadow-md badge-shine'
-                                : 'bg-zinc-950/50 border-zinc-800/50 opacity-45 grayscale'
-                            }`}
-                          >
-                            <div className={`p-2 rounded-xl flex items-center justify-center ${
-                              isUnlocked ? 'bg-indigo-500/10 text-indigo-400' : 'bg-white/5 text-slate-500'
-                            }`}>
-                              <Award className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <span className="block font-medium text-xs text-slate-200">{badge.title}</span>
-                              <span className="text-[9px] text-slate-500 block mt-0.5 max-w-[100px] leading-tight mx-auto">{badge.description}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
 
           {/* Right panel (AI Chat Companion) - Takes 4 columns */}
@@ -1540,7 +1511,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[#111113] border border-white/6 rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl relative"
+              className="bg-[#111113] border border-white/6 rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl relative"
             >
               <div className="flex items-center justify-between p-5 border-b border-white/5 bg-black/40">
                 <h3 className="text-sm font-bold text-text font-mono uppercase tracking-widest flex items-center gap-2">
@@ -1565,6 +1536,54 @@ export default function App() {
                     onConnectGoogle={handleGoogleLogin}
                     onDisconnect={handleDisconnectWorkspace}
                   />
+                </div>
+
+                <div className="space-y-4 pt-6 border-t border-white/5">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 font-mono">
+                    🖥️ Terminal Visual Calibration
+                  </h4>
+                  <div className="bg-zinc-950/80 border border-white/5 p-4 rounded-xl space-y-4 font-mono">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-text">CRT Scanline Opacity</span>
+                        <span className="text-brand font-bold">{(scanlineOpacity * 100).toFixed(0)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="0.6"
+                        step="0.02"
+                        value={scanlineOpacity}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          setScanlineOpacity(val);
+                          localStorage.setItem('terminal_scanline_opacity', String(val));
+                        }}
+                        className="w-full accent-brand bg-black h-1 rounded cursor-pointer"
+                      />
+                      <p className="text-[10px] text-muted-foreground text-text-sub">
+                        Reduces/increases the intensity of retro cathode-ray scanlines. Lower values increase general brightness and readability.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
+                      <span className="text-text">Analog Screen Flicker Effect</span>
+                      <button
+                        onClick={() => {
+                          const next = !isFlickerEnabled;
+                          setIsFlickerEnabled(next);
+                          localStorage.setItem('terminal_flicker_enabled', String(next));
+                        }}
+                        className={`px-3 py-1.5 rounded border text-[11px] font-bold cursor-pointer transition-all ${
+                          isFlickerEnabled 
+                            ? 'bg-brand/15 border-brand text-brand hover:bg-brand/20' 
+                            : 'bg-zinc-900 border-border text-muted hover:text-white'
+                        }`}
+                      >
+                        {isFlickerEnabled ? 'ENABLED' : 'DISABLED'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -1635,7 +1654,7 @@ export default function App() {
 
       {/* Symmetrical simple Footer */}
       <footer className="border-t border-white/5 py-8 bg-zinc-950/20 text-center text-[11px] text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-7xl xl:max-w-[1600px] mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <span>© 2026 Saviour AI Workspace. Dedicated to Zero Missed Deadlines.</span>
         </div>
       </footer>

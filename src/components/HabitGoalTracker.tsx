@@ -42,21 +42,96 @@ export const HabitGoalTracker: React.FC<HabitGoalTrackerProps> = ({
     setIsAdding(false);
   };
 
+  const getWeeks = () => {
+    const weeks = [];
+    const now = new Date();
+    const currentDay = now.getDay();
+    const startOfCurrentWeek = new Date(now);
+    startOfCurrentWeek.setDate(now.getDate() - currentDay);
+    
+    for (let i = 3; i >= 0; i--) {
+      const startOfWeek = new Date(startOfCurrentWeek);
+      startOfWeek.setDate(startOfCurrentWeek.getDate() - i * 7);
+      
+      const endOfWeek = new Date(startOfWeek);
+      endOfWeek.setDate(startOfWeek.getDate() + 6);
+      
+      const startStr = startOfWeek.toISOString().substring(0, 10);
+      const endStr = endOfWeek.toISOString().substring(0, 10);
+      
+      weeks.push({
+        label: i === 0 ? 'This Wk' : `Wk -${i}`,
+        startStr,
+        endStr,
+        displayRange: `${startOfWeek.toLocaleDateString([], { month: 'short', day: 'numeric' })} - ${endOfWeek.toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+      });
+    }
+    return weeks;
+  };
+
+  const getMonths = () => {
+    const months = [];
+    const now = new Date();
+    for (let i = 3; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        label: i === 0 ? 'This Mo' : d.toLocaleDateString([], { month: 'short' }),
+        year: d.getFullYear(),
+        monthNum: d.getMonth(),
+        displayLabel: d.toLocaleDateString([], { month: 'long', year: 'numeric' })
+      });
+    }
+    return months;
+  };
+
   const handleToggleHabitCompletion = (goal: Goal) => {
     const todayStr = new Date().toISOString().substring(0, 10);
-    const completedIndex = goal.completedDates.indexOf(todayStr);
+    const freq = goal.targetFrequency || 'daily';
     
     let updatedDates = [...goal.completedDates];
     let updatedStreak = goal.streak;
 
-    if (completedIndex >= 0) {
-      // Remove completion today
-      updatedDates.splice(completedIndex, 1);
-      updatedStreak = Math.max(0, updatedStreak - 1);
-    } else {
-      // Complete today
-      updatedDates.push(todayStr);
-      updatedStreak += 1;
+    if (freq === 'daily') {
+      const completedIndex = goal.completedDates.indexOf(todayStr);
+      if (completedIndex >= 0) {
+        updatedDates.splice(completedIndex, 1);
+        updatedStreak = Math.max(0, updatedStreak - 1);
+      } else {
+        updatedDates.push(todayStr);
+        updatedStreak += 1;
+      }
+    } else if (freq === 'weekly') {
+      const currentWeek = getWeeks().find(w => w.label === 'This Wk');
+      const hasCompletedThisWeek = currentWeek ? goal.completedDates.some(d => d >= currentWeek.startStr && d <= currentWeek.endStr) : false;
+      
+      if (hasCompletedThisWeek) {
+        if (currentWeek) {
+          updatedDates = updatedDates.filter(d => !(d >= currentWeek.startStr && d <= currentWeek.endStr));
+          updatedStreak = Math.max(0, updatedStreak - 1);
+        }
+      } else {
+        updatedDates.push(todayStr);
+        updatedStreak += 1;
+      }
+    } else if (freq === 'monthly') {
+      const currentMonth = getMonths().find(m => m.monthNum === new Date().getMonth() && m.year === new Date().getFullYear());
+      const hasCompletedThisMonth = currentMonth ? goal.completedDates.some(d => {
+        const dateObj = new Date(d);
+        return dateObj.getFullYear() === currentMonth.year && dateObj.getMonth() === currentMonth.monthNum;
+      }) : false;
+      
+      if (hasCompletedThisMonth) {
+        if (currentMonth) {
+          updatedDates = updatedDates.filter(d => {
+            const dateObj = new Date(d);
+            return !(dateObj.getFullYear() === currentMonth.year && dateObj.getMonth() === currentMonth.monthNum);
+          });
+          updatedStreak = Math.max(0, updatedStreak - 1);
+        }
+      } else {
+        updatedDates.push(todayStr);
+        updatedStreak += 1;
+      }
     }
 
     onUpdateGoal({
@@ -192,10 +267,24 @@ export const HabitGoalTracker: React.FC<HabitGoalTrackerProps> = ({
       </AnimatePresence>
 
       {/* Grid List of Habits */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {goals.map((goal) => {
           const todayStr = new Date().toISOString().substring(0, 10);
-          const completedToday = goal.completedDates.includes(todayStr);
+          const freq = goal.targetFrequency || 'daily';
+          
+          let isCompletedForPeriod = false;
+          if (freq === 'daily') {
+            isCompletedForPeriod = goal.completedDates.includes(todayStr);
+          } else if (freq === 'weekly') {
+            const currentWeek = getWeeks().find(w => w.label === 'This Wk');
+            isCompletedForPeriod = currentWeek ? goal.completedDates.some(d => d >= currentWeek.startStr && d <= currentWeek.endStr) : false;
+          } else if (freq === 'monthly') {
+            const currentMonth = getMonths().find(m => m.monthNum === new Date().getMonth() && m.year === new Date().getFullYear());
+            isCompletedForPeriod = currentMonth ? goal.completedDates.some(d => {
+              const dateObj = new Date(d);
+              return dateObj.getFullYear() === currentMonth.year && dateObj.getMonth() === currentMonth.monthNum;
+            }) : false;
+          }
 
           return (
             <motion.div
@@ -237,40 +326,128 @@ export const HabitGoalTracker: React.FC<HabitGoalTrackerProps> = ({
 
                 {/* Recurrence Period Switcher */}
                 <div className="flex gap-1.5 bg-zinc-950 p-0.5 rounded-lg border border-border w-fit">
-                  {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
+                  {(['daily', 'weekly', 'monthly'] as const).map((f) => (
                     <button
-                      key={freq}
-                      onClick={() => handleFrequencyChange(goal, freq)}
+                      key={f}
+                      onClick={() => handleFrequencyChange(goal, f)}
                       className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase transition-all cursor-pointer ${
-                        goal.targetFrequency === freq
+                        freq === f
                           ? 'bg-brand/20 text-brand'
                           : 'text-muted hover:text-text-sub'
                       }`}
                     >
-                      {freq}
+                      {f}
                     </button>
                   ))}
                 </div>
 
-                {/* Last 7 Days completion logs */}
+                {/* Dynamic period completion logs */}
                 <div className="space-y-1.5 pt-2">
-                  <span className="text-[10px] uppercase font-mono text-muted font-bold">History Logging Logs:</span>
+                  <span className="text-[10px] uppercase font-mono text-muted font-bold">
+                    {freq === 'daily' ? 'Last 7 Days:' : freq === 'weekly' ? 'Last 4 Weeks:' : 'Last 4 Months:'}
+                  </span>
+                  
                   <div className="flex justify-between bg-zinc-950 p-3 rounded-2xl border border-border">
-                    {last7Days.map((day) => {
+                    {freq === 'daily' && last7Days.map((day) => {
                       const completedOnDay = goal.completedDates.includes(day.dateStr);
                       return (
                         <div key={day.dateStr} className="flex flex-col items-center gap-1">
                           <span className="text-[9px] text-muted font-mono font-bold uppercase">{day.dayName}</span>
-                          <div
-                            className={`w-6 h-6 rounded-lg flex items-center justify-center font-mono text-[10px] font-bold border transition-all ${
+                          <button
+                            type="button"
+                            onClick={() => {
+                              let updatedDates = [...goal.completedDates];
+                              const idx = updatedDates.indexOf(day.dateStr);
+                              let updatedStreak = goal.streak;
+                              if (idx >= 0) {
+                                updatedDates.splice(idx, 1);
+                                updatedStreak = Math.max(0, updatedStreak - 1);
+                              } else {
+                                updatedDates.push(day.dateStr);
+                                updatedStreak += 1;
+                              }
+                              onUpdateGoal({ ...goal, completedDates: updatedDates, streak: updatedStreak });
+                            }}
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center font-mono text-[10px] font-bold border transition-all cursor-pointer ${
                               completedOnDay
-                                ? 'bg-brand/20 border-brand/40 text-brand'
-                                : 'bg-zinc-900 border-border text-muted'
+                                ? 'bg-brand/20 border-brand/40 text-brand hover:bg-brand/30'
+                                : 'bg-zinc-900 border-border text-muted hover:border-zinc-700'
                             }`}
-                            title={completedOnDay ? `Completed on ${day.dateStr}` : 'Not completed'}
+                            title={completedOnDay ? `Completed on ${day.dateStr}. Click to toggle.` : `Not completed. Click to toggle.`}
                           >
                             {day.dayNum}
-                          </div>
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {freq === 'weekly' && getWeeks().map((wk) => {
+                      const completedInWeek = goal.completedDates.some(d => d >= wk.startStr && d <= wk.endStr);
+                      return (
+                        <div key={wk.label} className="flex flex-col items-center gap-1 flex-1">
+                          <span className="text-[9px] text-muted font-mono font-bold uppercase">{wk.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              let updatedDates = [...goal.completedDates];
+                              let updatedStreak = goal.streak;
+                              if (completedInWeek) {
+                                updatedDates = updatedDates.filter(d => !(d >= wk.startStr && d <= wk.endStr));
+                                updatedStreak = Math.max(0, updatedStreak - 1);
+                              } else {
+                                updatedDates.push(wk.startStr);
+                                updatedStreak += 1;
+                              }
+                              onUpdateGoal({ ...goal, completedDates: updatedDates, streak: updatedStreak });
+                            }}
+                            className={`w-[90%] h-6 rounded-lg flex items-center justify-center font-mono text-[9px] font-bold border transition-all cursor-pointer ${
+                              completedInWeek
+                                ? 'bg-brand/20 border-brand/40 text-brand hover:bg-brand/30'
+                                : 'bg-zinc-900 border-border text-muted hover:border-zinc-700'
+                            }`}
+                            title={`Range: ${wk.displayRange}. Click to toggle.`}
+                          >
+                            ✓
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {freq === 'monthly' && getMonths().map((mo) => {
+                      const completedInMonth = goal.completedDates.some(d => {
+                        const dateObj = new Date(d);
+                        return dateObj.getFullYear() === mo.year && dateObj.getMonth() === mo.monthNum;
+                      });
+                      return (
+                        <div key={mo.displayLabel} className="flex flex-col items-center gap-1 flex-1">
+                          <span className="text-[9px] text-muted font-mono font-bold uppercase">{mo.label}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              let updatedDates = [...goal.completedDates];
+                              let updatedStreak = goal.streak;
+                              if (completedInMonth) {
+                                updatedDates = updatedDates.filter(d => {
+                                  const dateObj = new Date(d);
+                                  return !(dateObj.getFullYear() === mo.year && dateObj.getMonth() === mo.monthNum);
+                                });
+                                updatedStreak = Math.max(0, updatedStreak - 1);
+                              } else {
+                                const placeholderDate = `${mo.year}-${String(mo.monthNum + 1).padStart(2, '0')}-01`;
+                                updatedDates.push(placeholderDate);
+                                updatedStreak += 1;
+                              }
+                              onUpdateGoal({ ...goal, completedDates: updatedDates, streak: updatedStreak });
+                            }}
+                            className={`w-[90%] h-6 rounded-lg flex items-center justify-center font-mono text-[9px] font-bold border transition-all cursor-pointer ${
+                              completedInMonth
+                                ? 'bg-brand/20 border-brand/40 text-brand hover:bg-brand/30'
+                                : 'bg-zinc-900 border-border text-muted hover:border-zinc-700'
+                            }`}
+                            title={`Month: ${mo.displayLabel}. Click to toggle.`}
+                          >
+                            ✓
+                          </button>
                         </div>
                       );
                     })}
@@ -290,13 +467,13 @@ export const HabitGoalTracker: React.FC<HabitGoalTrackerProps> = ({
                     <button
                       onClick={() => handleToggleHabitCompletion(goal)}
                       className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all border ${
-                        completedToday
+                        isCompletedForPeriod
                           ? 'bg-success/10 border-success/20 text-success hover:bg-success/20'
                           : 'bg-brand hover:bg-indigo-500 text-black hover:text-white border-transparent'
                       }`}
                     >
-                      {completedToday ? <CheckCircle2 className="w-3 h-3" /> : <Circle className="w-3 h-3" />}
-                      {completedToday ? 'Completed Today' : 'Mark Done'}
+                      {isCompletedForPeriod ? <CheckCircle2 className="w-3 h-3" /> : <Circle className="w-3 h-3" />}
+                      {isCompletedForPeriod ? 'Completed' : 'Mark Done'}
                     </button>
                   )}
 
