@@ -1,0 +1,35 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "The user document containing all isolated tasks, goals, stats, and notifications.",
+      "type": "object",
+      "properties": {
+        "tasks": { "type": "array" },
+        "goals": { "type": "array" },
+        "badges": { "type": "array" },
+        "stats": { "type": "object" },
+        "notifications": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["updatedAt"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Individual task schema if stored separately.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["userId", "title"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Main isolated user profile document containing tasks, goals, stats, and notifications."
+    }
+  }
+}

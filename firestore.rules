@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // User Profile & Consolidated State Document
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Individual collection matches to secure all possible paths (zero-trust coverage)
+    match /tasks/{taskId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) ||
+        (resource != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid)
+      );
+    }
+
+    match /habits/{habitId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) ||
+        (resource != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid)
+      );
+    }
+
+    match /goals/{goalId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) ||
+        (resource != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid)
+      );
+    }
+
+    match /notifications/{notificationId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) ||
+        (resource != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid)
+      );
+    }
+
+    match /analytics/{analyticsId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) ||
+        (resource != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid)
+      );
+    }
+
+    match /chat/{chatId} {
+      allow read, write: if isSignedIn() && (
+        (resource == null && request.resource.data.userId == request.auth.uid) ||
+        (resource != null && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid)
+      );
+    }
+  }
+}

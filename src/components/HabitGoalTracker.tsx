@@ -122,7 +122,7 @@ export const HabitGoalTracker: React.FC<HabitGoalTrackerProps> = ({
 
         <button
           onClick={() => setIsAdding(!isAdding)}
-          className="px-4 py-2 bg-brand hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/10 transition-all self-start md:self-center z-10"
+          className="px-4 py-2 bg-brand hover:bg-indigo-500 text-black hover:text-white font-semibold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/10 transition-all self-start md:self-center z-10"
         >
           <Plus className="w-4 h-4" />
           {isAdding ? 'Cancel' : 'Create Custom Habit'}
@@ -292,7 +292,7 @@ export const HabitGoalTracker: React.FC<HabitGoalTrackerProps> = ({
                       className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all border ${
                         completedToday
                           ? 'bg-success/10 border-success/20 text-success hover:bg-success/20'
-                          : 'bg-brand hover:bg-indigo-500 text-white border-transparent'
+                          : 'bg-brand hover:bg-indigo-500 text-black hover:text-white border-transparent'
                       }`}
                     >
                       {completedToday ? <CheckCircle2 className="w-3 h-3" /> : <Circle className="w-3 h-3" />}

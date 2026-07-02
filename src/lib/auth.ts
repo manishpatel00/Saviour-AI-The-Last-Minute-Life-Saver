@@ -13,7 +13,9 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db = firebaseConfig.firestoreDatabaseId 
+  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(app);
 
 const provider = new GoogleAuthProvider();
 
@@ -29,24 +31,22 @@ provider.setCustomParameters({
 });
 
 let isSigningIn = false;
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('last_minute_google_token') : null;
 
 // Initialize auth state listener
 export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
+  onAuthSuccess?: (user: User, token: string | null) => void,
   onAuthFailure?: () => void
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else {
-        // If we have a user but no cached token, they refreshed. Since token is in-memory,
-        // we prompt them to sign in again or we can let them sign in smoothly.
-        if (onAuthFailure) onAuthFailure();
+      if (!cachedAccessToken) {
+        cachedAccessToken = localStorage.getItem('last_minute_google_token');
       }
+      if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
     } else {
       cachedAccessToken = null;
+      localStorage.removeItem('last_minute_google_token');
       if (onAuthFailure) onAuthFailure();
     }
   });
@@ -63,6 +63,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     }
 
     cachedAccessToken = credential.accessToken;
+    localStorage.setItem('last_minute_google_token', cachedAccessToken);
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error('Sign in error:', error);
@@ -73,10 +74,14 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
+  if (!cachedAccessToken) {
+    cachedAccessToken = localStorage.getItem('last_minute_google_token');
+  }
   return cachedAccessToken;
 };
 
 export const logout = async () => {
   await signOut(auth);
   cachedAccessToken = null;
+  localStorage.removeItem('last_minute_google_token');
 };

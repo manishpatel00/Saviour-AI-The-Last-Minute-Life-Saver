@@ -358,111 +358,58 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
               );
             }
 
+            const getDueInText = () => {
+              const dueObj = new Date(task.dueDate);
+              const diffMs = dueObj.getTime() - Date.now();
+              if (diffMs < 0) return 'Overdue';
+              const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+              if (diffHrs < 1) {
+                const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+                return `${diffMins}m`;
+              }
+              if (diffHrs < 24) return `${diffHrs}h`;
+              const diffDays = Math.floor(diffHrs / 24);
+              return `${diffDays}d`;
+            };
+
+            const getCharProgressBar = () => {
+              const totalBlocks = 10;
+              const solidBlocks = Math.min(10, Math.max(0, Math.round((progressPct / 100) * totalBlocks)));
+              const lightBlocks = totalBlocks - solidBlocks;
+              return '█'.repeat(solidBlocks) + '░'.repeat(lightBlocks);
+            };
+
             return (
               <div 
                 key={task.id}
-                className={`bg-surface border rounded-2xl overflow-hidden transition-all duration-300 font-sans text-left ${
-                  task.priority === 'critical' && task.status !== 'completed'
-                    ? 'border-red-500/25 shadow-md shadow-red-950/5'
-                    : isExpanded
-                      ? 'border-border shadow-lg shadow-black/10'
-                      : 'border-border/60 hover:border-border'
-                }`}
+                className="bg-[#111113] border border-white/6 rounded-[20px] overflow-hidden transition-all duration-300 font-sans text-left p-6 shadow-sm relative group"
               >
-                {/* Primary Card View (Row Clickable) */}
-                <div 
-                  onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
-                  className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 cursor-pointer select-none"
-                >
-                  <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                    {/* Urgency/Priority Pulse Dot Indicator */}
-                    <div className="mt-1 flex-shrink-0">
-                      {task.priority === 'critical' && task.status !== 'completed' ? (
-                        <div className="relative w-3.5 h-3.5 flex items-center justify-center">
-                          <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 animate-ping opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-                        </div>
-                      ) : (
-                        <span className={`block w-2.5 h-2.5 rounded-full ${
-                          task.priority === 'high' 
-                            ? 'bg-amber-500' 
-                            : task.priority === 'medium' 
-                              ? 'bg-indigo-500' 
-                              : 'bg-zinc-600'
-                        }`} />
-                      )}
-                    </div>
+                {/* Visual Accent Glow for critical/active tasks */}
+                {task.priority === 'critical' && task.status !== 'completed' && (
+                  <div className="absolute inset-0 bg-red-500/2 rounded-[20px] pointer-events-none border border-red-500/20" />
+                )}
 
-                    {/* Left Meta text */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className={`text-sm font-semibold truncate ${task.status === 'completed' ? 'text-zinc-500 line-through font-normal' : 'text-text'}`}>
-                          {task.title}
-                        </h4>
-                      </div>
-                      
+                <div className="flex flex-col gap-4">
+                  {/* Title and Top Level Metadata */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <h4 
+                        onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+                        className={`text-sm font-semibold truncate cursor-pointer hover:text-brand transition-colors ${
+                          task.status === 'completed' ? 'text-zinc-500 line-through font-normal' : 'text-text'
+                        }`}
+                      >
+                        {task.title}
+                      </h4>
                       {task.description && (
-                        <p className="text-xs text-zinc-400 mt-1 line-clamp-1 max-w-xl font-light">
+                        <p className="text-xs text-zinc-400 font-light line-clamp-2 leading-relaxed">
                           {task.description}
                         </p>
                       )}
-
-                      {/* Info Chips list */}
-                      <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                        <span className="bg-zinc-950/40 border border-border/40 text-[9px] font-bold uppercase tracking-widest text-zinc-400 px-2 py-0.5 rounded-lg">
-                          {task.category}
-                        </span>
-                        
-                        <span className={`text-[9px] font-mono px-2 py-0.5 rounded-lg border uppercase ${
-                          task.priority === 'critical' 
-                            ? 'bg-red-500/10 text-red-400 border-red-500/20' 
-                            : task.priority === 'high' 
-                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
-                              : task.priority === 'medium'
-                                ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                                : 'bg-zinc-800 text-zinc-400 border-zinc-800'
-                        }`}>
-                          {task.priority}
-                        </span>
-
-                        <span className="bg-zinc-950/40 border border-border/40 text-[9px] font-mono text-zinc-400 px-2 py-0.5 rounded-lg">
-                          Score: {task.urgencyScore}
-                        </span>
-
-                        {task.subtasks.length > 0 && (
-                          <span className="bg-indigo-950/10 border border-indigo-500/20 text-[9px] font-mono text-indigo-400 px-2 py-0.5 rounded-lg">
-                            {subtaskCompletedCount}/{task.subtasks.length} subtasks
-                          </span>
-                        )}
-                      </div>
                     </div>
-                  </div>
 
-                  {/* Right side info & Top Level buttons */}
-                  <div className="flex sm:flex-col items-end justify-between sm:justify-center gap-2 w-full sm:w-auto border-t sm:border-t-0 border-border/40 pt-2 sm:pt-0 self-stretch sm:self-auto">
-                    {/* Status Badge in Corner */}
-                    <span className={`text-[10px] font-mono font-semibold px-2.5 py-1 rounded-full uppercase border ${
-                      task.status === 'completed'
-                        ? 'bg-emerald-950/50 text-emerald-300 border-emerald-500/20'
-                        : task.status === 'in_progress'
-                          ? 'bg-indigo-950/50 text-indigo-300 border-indigo-500/20'
-                          : isOverdue
-                            ? 'bg-red-950/50 text-red-300 border-red-500/20'
-                            : 'bg-zinc-900 text-zinc-400 border-zinc-800'
-                    }`}>
-                      {task.status === 'completed' 
-                        ? 'Completed' 
-                        : task.status === 'in_progress'
-                          ? 'In Progress'
-                          : isOverdue
-                            ? 'Overdue'
-                            : 'Pending'
-                      }
-                    </span>
-
-                    {/* Minimal Inline Action Trigger buttons */}
-                    <div className="flex items-center gap-1.5 mt-1">
-                      {/* Check toggler */}
+                    {/* Completion Status check button & Delete */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -471,41 +418,106 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
                         className={`w-7 h-7 rounded-lg border flex items-center justify-center transition-colors cursor-pointer ${
                           task.status === 'completed'
                             ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
-                            : 'bg-zinc-900/50 border-border text-zinc-400 hover:bg-zinc-800'
+                            : 'bg-zinc-900/50 border-white/6 text-zinc-400 hover:bg-zinc-800'
                         }`}
-                        title="Toggle task completion status"
+                        title="Toggle status"
                       >
                         <Check className="w-3.5 h-3.5" />
                       </button>
 
-                      {/* Delete Trigger */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteTask(task.id);
                         }}
-                        className="w-7 h-7 rounded-lg border border-border bg-zinc-900/50 text-zinc-500 hover:text-red-400 hover:bg-red-950/20 hover:border-red-500/20 transition-colors cursor-pointer flex items-center justify-center"
-                        title="Delete this deadline"
+                        className="w-7 h-7 rounded-lg border border-white/6 bg-zinc-900/50 text-zinc-500 hover:text-red-400 hover:bg-red-950/20 hover:border-red-500/20 transition-colors cursor-pointer flex items-center justify-center"
+                        title="Delete deadline"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
 
-                      {/* Collapse/Expand indicator */}
-                      <div className="text-zinc-500 w-5 h-5 flex items-center justify-center ml-1">
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </div>
+                      <button
+                        onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+                        className="w-7 h-7 rounded-lg border border-white/6 bg-zinc-900/50 text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
+                        title="Toggle expanded details"
+                      >
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
                     </div>
+                  </div>
+
+                  {/* Operational Metrics (Risk score & Due In) */}
+                  <div className="flex items-center gap-5 text-xs font-mono">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-zinc-500 uppercase font-bold text-[10px]">Risk:</span>
+                      <span className={`font-bold ${
+                        task.urgencyScore >= 80 ? 'text-red-400' : task.urgencyScore >= 50 ? 'text-amber-400' : 'text-emerald-400'
+                      }`}>
+                        {task.urgencyScore}%
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-zinc-500 uppercase font-bold text-[10px]">Due in:</span>
+                      <span className={`font-bold ${isOverdue ? 'text-red-400' : 'text-zinc-300'}`}>
+                        {getDueInText()}
+                      </span>
+                    </div>
+
+                    {task.priority === 'critical' && task.status !== 'completed' && (
+                      <span className="px-2 py-0.5 rounded bg-red-500/10 text-[9px] font-bold text-red-400 uppercase border border-red-500/20 animate-pulse font-mono tracking-wider">
+                        CRITICAL
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Character Progress Bar */}
+                  <div className="space-y-1.5 font-mono text-xs">
+                    <div className="flex justify-between text-[11px] text-zinc-500">
+                      <span>Progress</span>
+                      <span>{progressPct}%</span>
+                    </div>
+                    <div className="text-zinc-400 leading-none tracking-widest font-mono text-sm selection:bg-transparent select-none">
+                      {getCharProgressBar()}
+                    </div>
+                  </div>
+
+                  {/* Actions Row */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/4">
+                    <button
+                      onClick={() => handleAIAction(task.id, 'breakdown')}
+                      disabled={aiLoadingTaskId === task.id}
+                      className="px-3 py-1.5 bg-zinc-900/50 hover:bg-zinc-800 border border-white/6 rounded-lg text-[11px] text-zinc-300 hover:text-white font-mono cursor-pointer transition-colors"
+                    >
+                      [Breakdown]
+                    </button>
+                    <button
+                      onClick={() => onSyncToCalendar(task)}
+                      className="px-3 py-1.5 bg-zinc-900/50 hover:bg-zinc-800 border border-white/6 rounded-lg text-[11px] text-zinc-300 hover:text-white font-mono cursor-pointer transition-colors"
+                    >
+                      [Schedule]
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Focus: navigate directly to Focus tab / starts Pomodoro!
+                        const pTab = document.getElementById('active-feature-tab');
+                        pTab?.scrollIntoView({ behavior: 'smooth' });
+                        // Set the focus timer for this task
+                        setExpandedTaskId(task.id);
+                        onMitigateTask(task.id, 'reschedule'); // simulates a buffer check
+                      }}
+                      className="px-3 py-1.5 bg-zinc-900/50 hover:bg-zinc-800 border border-white/6 rounded-lg text-[11px] text-brand hover:text-brand-light font-mono cursor-pointer transition-colors font-bold"
+                    >
+                      [Focus]
+                    </button>
+                    <button
+                      onClick={() => handleAIAction(task.id, 'mitigate', 'extension_request')}
+                      className="px-3 py-1.5 bg-zinc-900/50 hover:bg-zinc-800 border border-white/6 rounded-lg text-[11px] text-zinc-300 hover:text-white font-mono cursor-pointer transition-colors"
+                    >
+                      [Email]
+                    </button>
                   </div>
                 </div>
-
-                {/* Subtasks inline preview if collapsed */}
-                {!isExpanded && task.subtasks.length > 0 && (
-                  <div className="px-4 pb-4">
-                    <div className="h-1 bg-zinc-800 rounded-full overflow-hidden max-w-md">
-                      <div className="h-full bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }} />
-                    </div>
-                  </div>
-                )}
 
                 {/* Expanded Details Panel */}
                 <AnimatePresence>

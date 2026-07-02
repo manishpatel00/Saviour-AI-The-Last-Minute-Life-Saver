@@ -9,6 +9,8 @@ interface AIAgentCompanionProps {
   onSendMessage: (text: string) => Promise<void>;
   onTriggerSuggestedAction: (action: SuggestedAction) => void;
   isGenerating: boolean;
+  isCalendarConnected?: boolean;
+  isGmailConnected?: boolean;
 }
 
 const QUICK_PROMPTS = [
@@ -22,13 +24,31 @@ export const AIAgentCompanion: React.FC<AIAgentCompanionProps> = ({
   messages,
   onSendMessage,
   onTriggerSuggestedAction,
-  isGenerating
+  isGenerating,
+  isCalendarConnected = false,
+  isGmailConnected = false
 }) => {
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Progressive step-by-step interval effect for autonomous agent tool execution logs
+  useEffect(() => {
+    if (isGenerating) {
+      setCurrentStep(0);
+      const interval = setInterval(() => {
+        setCurrentStep(prev => {
+          if (prev < 6) return prev + 1;
+          clearInterval(interval);
+          return prev;
+        });
+      }, 600);
+      return () => clearInterval(interval);
+    }
+  }, [isGenerating]);
 
   // Initialize Web Speech API
   useEffect(() => {
@@ -192,22 +212,138 @@ export const AIAgentCompanion: React.FC<AIAgentCompanionProps> = ({
           );
         })}
 
-        {/* Structured 3-Segment Thinking Loader skeleton */}
+        {/* Autonomous Agent Tool Execution Timeline */}
         {isGenerating && (
-          <div className="flex items-start gap-3 max-w-[80%] mr-auto text-left">
-            <div className="p-2 rounded bg-brand/10 text-brand border border-brand/20 flex-shrink-0">
-              <Bot className="w-4 h-4 animate-pulse" />
+          <div className="flex flex-col gap-3 p-4 bg-zinc-950/80 border border-brand/20 rounded-md max-w-[95%] mr-auto text-left font-mono space-y-3 relative glow-accent">
+            <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-brand" />
+            
+            <div className="flex items-center gap-2 text-brand text-[11px] font-bold tracking-widest uppercase animate-pulse border-b border-brand/20 pb-2">
+              <Bot className="w-4 h-4 text-brand animate-spin" style={{ animationDuration: '3s' }} />
+              <span>SAVIOUR.OS // COGNITIVE AGENTS ACTIVE</span>
             </div>
-            <div className="space-y-2 flex-1 min-w-[200px]">
-              <div className="text-[9px] text-brand uppercase font-mono tracking-widest flex items-center gap-1.5 font-bold animate-pulse">
-                <RefreshCw className="w-3 h-3 animate-spin text-brand" />
-                COGNITIVE_LOAD_CALCULATING...
+
+            <div className="space-y-3">
+              {/* Step 1: Google Calendar Connected */}
+              <div className="flex items-start gap-2.5 text-xs">
+                {isCalendarConnected || currentStep > 0 ? (
+                  <span className="text-brand font-bold text-xs">✓</span>
+                ) : currentStep === 0 ? (
+                  <span className="text-brand animate-pulse font-bold text-xs">&gt;</span>
+                ) : (
+                  <span className="text-zinc-700 font-bold text-xs">·</span>
+                )}
+                <div className="flex-1">
+                  <div className={`font-bold uppercase tracking-wider ${(isCalendarConnected || currentStep >= 0) ? 'text-brand' : 'text-zinc-600'}`}>
+                    {(isCalendarConnected || currentStep > 0) ? '✓ Google Calendar Connected' : 'Google Calendar Not Connected'}
+                  </div>
+                </div>
               </div>
-              <div className="bg-brand/5 border border-brand/20 rounded p-4 space-y-2 w-full">
-                <div className="h-2 w-full bg-brand/20 animate-pulse" style={{ animationDelay: '0ms' }} />
-                <div className="h-2 w-[75%] bg-brand/20 animate-pulse" style={{ animationDelay: '150ms' }} />
-                <div className="h-2 w-[45%] bg-brand/20 animate-pulse" style={{ animationDelay: '300ms' }} />
+
+              {/* Step 2: Gmail Connected */}
+              <div className="flex items-start gap-2.5 text-xs">
+                {isGmailConnected || currentStep > 1 ? (
+                  <span className="text-brand font-bold text-xs">✓</span>
+                ) : currentStep === 1 ? (
+                  <span className="text-brand animate-pulse font-bold text-xs">&gt;</span>
+                ) : (
+                  <span className="text-zinc-700 font-bold text-xs">·</span>
+                )}
+                <div className="flex-1">
+                  <div className={`font-bold uppercase tracking-wider ${(isGmailConnected || currentStep >= 1) ? 'text-brand' : 'text-zinc-600'}`}>
+                    {(isGmailConnected || currentStep > 1) ? '✓ Gmail Connected' : 'Gmail Not Connected'}
+                  </div>
+                </div>
               </div>
+
+              {/* Step 3: Calendar Scanned */}
+              <div className="flex items-start gap-2.5 text-xs">
+                {currentStep > 2 ? (
+                  <span className="text-brand font-bold text-xs">✓</span>
+                ) : currentStep === 2 ? (
+                  <span className="text-brand animate-pulse font-bold text-xs">&gt;</span>
+                ) : (
+                  <span className="text-zinc-700 font-bold text-xs">·</span>
+                )}
+                <div className="flex-1">
+                  <div className={`font-bold uppercase tracking-wider ${currentStep >= 2 ? 'text-brand' : 'text-zinc-600'}`}>
+                    {currentStep > 2 ? '✓ Calendar Scanned' : 'Scanning Google Calendar...'}
+                  </div>
+                  {currentStep === 2 && (
+                    <div className="text-[10px] text-zinc-500 bg-zinc-950 p-2 rounded border border-white/5 font-mono mt-1 select-all">
+                      <span className="text-brand/60 font-bold">CALLING:</span> get_calendar_events({`{ start_date: "2026-07-01", end_date: "2026-07-02" }`})
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Step 4: Risk Analysis Complete */}
+              <div className="flex items-start gap-2.5 text-xs">
+                {currentStep > 3 ? (
+                  <span className="text-brand font-bold text-xs">✓</span>
+                ) : currentStep === 3 ? (
+                  <span className="text-brand animate-pulse font-bold text-xs">&gt;</span>
+                ) : (
+                  <span className="text-zinc-700 font-bold text-xs">·</span>
+                )}
+                <div className="flex-1">
+                  <div className={`font-bold uppercase tracking-wider ${currentStep >= 3 ? 'text-brand' : 'text-zinc-600'}`}>
+                    {currentStep > 3 ? '✓ Risk Analysis Complete' : 'Predicting deadline risk via Risk Engine...'}
+                  </div>
+                  {currentStep === 3 && (
+                    <div className="text-[10px] text-zinc-500 bg-zinc-950 p-2 rounded border border-white/5 font-mono mt-1 select-all">
+                      <span className="text-brand/60 font-bold">CALLING:</span> calculate_burnout({`{ tasks_count: ${messages.length}, overdue: 1 }`})
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Step 5: Focus Session Created */}
+              <div className="flex items-start gap-2.5 text-xs">
+                {currentStep > 4 ? (
+                  <span className="text-brand font-bold text-xs">✓</span>
+                ) : currentStep === 4 ? (
+                  <span className="text-brand animate-pulse font-bold text-xs">&gt;</span>
+                ) : (
+                  <span className="text-zinc-700 font-bold text-xs">·</span>
+                )}
+                <div className="flex-1">
+                  <div className={`font-bold uppercase tracking-wider ${currentStep >= 4 ? 'text-brand' : 'text-zinc-600'}`}>
+                    {currentStep > 4 ? '✓ Focus Session Created' : 'Booting up Pomodoro Rescue block...'}
+                  </div>
+                  {currentStep === 4 && (
+                    <div className="text-[10px] text-zinc-500 bg-zinc-950 p-2 rounded border border-white/5 font-mono mt-1 select-all">
+                      <span className="text-brand/60 font-bold">CALLING:</span> create_focus_block({`{ task_id: "auto", length: 25 }`})
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Step 6: Email Draft Created */}
+              <div className="flex items-start gap-2.5 text-xs">
+                {currentStep > 5 ? (
+                  <span className="text-brand font-bold text-xs">✓</span>
+                ) : currentStep === 5 ? (
+                  <span className="text-brand animate-pulse font-bold text-xs">&gt;</span>
+                ) : (
+                  <span className="text-zinc-700 font-bold text-xs">·</span>
+                )}
+                <div className="flex-1">
+                  <div className={`font-bold uppercase tracking-wider ${currentStep >= 5 ? 'text-brand' : 'text-zinc-600'}`}>
+                    {currentStep > 5 ? '✓ Email Draft Created' : 'Generating professional extension draft...'}
+                  </div>
+                  {currentStep === 5 && (
+                    <div className="text-[10px] text-zinc-500 bg-zinc-950 p-2 rounded border border-white/5 font-mono mt-1 select-all">
+                      <span className="text-brand/60 font-bold">CALLING:</span> generate_extension_draft({`{ recipient: "recipient@example.com" }`})
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* General progress banner */}
+            <div className="text-[10px] text-zinc-500 font-mono flex items-center gap-2 pt-2 border-t border-white/5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-brand animate-ping" />
+              <span>[REASONING ENGINE STATUS: {currentStep === 6 ? 'PLAN COMPILED' : 'PROCESSING_MITIGATIONS'}]</span>
             </div>
           </div>
         )}

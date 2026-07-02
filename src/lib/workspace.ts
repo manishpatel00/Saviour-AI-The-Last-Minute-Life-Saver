@@ -125,3 +125,33 @@ export async function createGmailDraft(
 
   return response.json();
 }
+
+/**
+ * Fetch calendar events from the user's primary Google Calendar
+ */
+export async function listGoogleCalendarEvents(
+  accessToken: string,
+  maxResults: number = 10
+): Promise<any[]> {
+  const timeMin = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(); // last 7 days to next events
+  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(
+    timeMin
+  )}&maxResults=${maxResults}&singleEvents=true&orderBy=startTime`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Google Calendar Fetch Error: ${errText}`);
+  }
+
+  const data = await response.json();
+  return data.items || [];
+}
+
