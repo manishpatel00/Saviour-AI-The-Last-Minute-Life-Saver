@@ -65,7 +65,11 @@ export const WorkspaceConnector: React.FC<WorkspaceConnectorProps> = ({
     onConnectGoogle();
   };
 
-  const isConnected = !!(user && accessToken);
+  const isSandbox = typeof window !== 'undefined' && localStorage.getItem('is_sandbox_mode') === 'true';
+  const isGuest = typeof window !== 'undefined' && localStorage.getItem('is_guest_mode') === 'true';
+  const isGoogleConnected = !!(user && accessToken && !isSandbox && !isGuest);
+  const isSessionActive = !!user;
+  const isConnected = isGoogleConnected || isSandbox || isGuest;
 
   return (
     <div className="space-y-6 font-sans text-left">
@@ -87,7 +91,7 @@ export const WorkspaceConnector: React.FC<WorkspaceConnectorProps> = ({
       </div>
 
       {/* Global Status Alert banner if disconnected */}
-      {!isConnected && (
+      {!isGoogleConnected && (
         <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div className="space-y-1">
@@ -100,7 +104,7 @@ export const WorkspaceConnector: React.FC<WorkspaceConnectorProps> = ({
       )}
 
       {/* Connection Hub details when connected */}
-      {isConnected && (
+      {isSessionActive && (
         <div className="p-4 bg-zinc-950/60 border border-white/6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-brand/20 to-indigo-500/20 flex items-center justify-center border border-brand/30">
@@ -117,30 +121,43 @@ export const WorkspaceConnector: React.FC<WorkspaceConnectorProps> = ({
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h4 className="font-semibold text-sm text-text whitespace-nowrap">{user?.displayName || 'Authorized Operative'}</h4>
-                <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono bg-success/10 border border-success/20 text-success font-bold whitespace-nowrap">SECURE CHANNEL</span>
+                <h4 className="font-semibold text-sm text-text whitespace-nowrap">
+                  {isGuest ? 'Anonymous Sentinel (Demo)' : (user?.displayName || user?.email?.split('@')[0] || 'Authorized Operative')}
+                </h4>
+                <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-mono font-bold whitespace-nowrap ${
+                  isGoogleConnected 
+                    ? 'bg-success/10 border-success/20 text-success' 
+                    : isSandbox 
+                      ? 'bg-brand/10 border-brand/20 text-brand animate-pulse' 
+                      : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                }`}>
+                  {isGoogleConnected ? 'SECURE GOOGLE CHANNEL' : isSandbox ? 'SANDBOX CLOUD ACTIVE' : 'LOCAL DEMO ACTIVE'}
+                </span>
               </div>
-              <p className="text-xs text-text-sub font-light font-mono">{user?.email}</p>
+              <p className="text-xs text-text-sub font-light font-mono">{isGuest ? 'saviour.ai/demo' : user?.email}</p>
             </div>
           </div>
 
           <div className="flex gap-2 w-full sm:w-auto">
-            <CTAButton 
-              variant="secondary" 
-              size="sm" 
-              onClick={handleReconnect}
-              className="text-[10px] font-mono font-bold uppercase tracking-wider flex-1 sm:flex-none"
-              title="Refresh access token or log in with different account"
-            >
-              <RefreshCw className="w-3 h-3 text-brand" /> Reconnect
-            </CTAButton>
+            {isGoogleConnected && (
+              <CTAButton 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleReconnect}
+                className="text-[10px] font-mono font-bold uppercase tracking-wider flex-1 sm:flex-none"
+                title="Refresh access token or log in with different account"
+              >
+                <RefreshCw className="w-3 h-3 text-brand" /> Reconnect
+              </CTAButton>
+            )}
             <CTAButton 
               variant="secondary" 
               size="sm" 
               onClick={onDisconnect}
               className="!text-crisis hover:!text-red-400 !border-crisis/20 hover:!border-crisis/40 text-[10px] font-mono font-bold uppercase tracking-wider flex-1 sm:flex-none"
+              title="Disconnect active session and log out safely"
             >
-              Disconnect
+              Disconnect & Sign Out
             </CTAButton>
           </div>
         </div>

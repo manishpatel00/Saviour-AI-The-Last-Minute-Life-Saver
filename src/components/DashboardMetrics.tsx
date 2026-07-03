@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Task, Goal, Badge, UserStats } from '../types';
-import { Flame, ShieldAlert, Zap, Hourglass, Trophy, CheckCircle2 } from 'lucide-react';
+import { Flame, ShieldAlert, Zap, Hourglass, Trophy } from 'lucide-react';
 
 interface DashboardMetricsProps {
   tasks: Task[];
@@ -17,7 +17,6 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
   stats,
   onSelectPomodoro
 }) => {
-  const criticalCount = tasks.filter(t => t.priority === 'critical' && t.status !== 'completed').length;
   const completedTodayCount = tasks.filter(t => t.status === 'completed').length;
 
   // Level up percentage helper
@@ -51,21 +50,26 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
     }
   };
 
+  // Generate 7 days compliance dots based on streak count
+  const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const complianceStreak = stats.streakDays;
+
   return (
     <div className="space-y-6">
       {/* Bento Layout Grid - 3 cards in a row on desktop */}
       <motion.div 
-        variants={cardsContainerVariants}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+         variants={cardsContainerVariants}
+         initial="hidden"
+         animate="show"
+         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
       >
         {/* Card 1: Gamified Hero Profile (Level & XP) */}
         <motion.div
           variants={cardVariants}
-          whileHover={{ y: -2, boxShadow: '0 0 15px rgba(0,255,65,0.3)', borderColor: 'var(--color-brand)' }}
-          className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between transition-all duration-300 font-sans relative"
+          whileHover={{ y: -3, boxShadow: '0 0 20px rgba(0,255,65,0.25)', borderColor: 'var(--color-brand)' }}
+          className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between transition-all duration-300 font-sans relative overflow-hidden group"
         >
+          <div className="absolute inset-0 bg-gradient-to-tr from-brand/5 via-transparent to-transparent opacity-40 pointer-events-none" />
           <div className="corner corner-tl" />
           <div className="corner corner-tr" />
           <div className="corner corner-bl" />
@@ -73,28 +77,40 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-brand font-mono">LEVEL {stats.level} OPERATIVE</span>
-              <div className="p-2 rounded-lg bg-brand/10 text-brand border border-brand/20">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-brand font-mono flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 bg-brand rounded-full animate-ping" />
+                LVL {stats.level} OPERATIVE
+              </span>
+              <div className="p-2 rounded-lg bg-brand/10 text-brand border border-brand/20 group-hover:scale-110 transition-transform">
                 <Trophy className="w-4 h-4" />
               </div>
             </div>
             <h4 className="text-sm font-bold text-text font-display tracking-wide uppercase">PRODUCTIVITY_METRICS</h4>
-            <p className="text-xs text-text-sub font-light">Your overall task mitigation tier.</p>
+            <p className="text-xs text-text-sub font-light">Your overall task mitigation and safeguard tier.</p>
           </div>
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 space-y-3">
             <div className="flex justify-between items-end">
-              <span className="font-mono text-[10px] text-muted uppercase font-bold">XP Progress</span>
+              <span className="font-mono text-[9px] text-muted uppercase font-bold tracking-wider">Notched XP progress</span>
               <span className="font-mono text-xs text-brand font-bold">{stats.xp} / {nextLevelXp} XP</span>
             </div>
             
-            <div className="h-2.5 w-full bg-zinc-950 rounded-sm overflow-hidden relative border border-border p-[1px]">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${xpPercentage}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-                className="h-full bg-brand"
-              />
+            {/* Cybernetic Segmented Progress Bar */}
+            <div className="flex gap-1 h-3.5 items-center select-none">
+              {Array.from({ length: 14 }).map((_, idx) => {
+                const stepThreshold = (idx + 1) / 14 * 100;
+                const isActive = xpPercentage >= stepThreshold;
+                return (
+                  <div
+                    key={idx}
+                    className={`h-full flex-1 border transition-all duration-500 rounded-sm ${
+                      isActive 
+                        ? 'bg-brand border-brand/40 shadow-[0_0_8px_rgba(0,255,65,0.3)]' 
+                        : 'bg-zinc-950 border-border/60'
+                    }`}
+                  />
+                );
+              })}
             </div>
           </div>
         </motion.div>
@@ -102,10 +118,9 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
         {/* Card 2: Streak & Habits Monitor */}
         <motion.div
           variants={cardVariants}
-          whileHover={{ y: -2, boxShadow: '0 0 15px rgba(0,255,65,0.3)', borderColor: 'var(--color-brand)' }}
-          className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between transition-all duration-300 font-sans relative"
+          whileHover={{ y: -3, boxShadow: '0 0 20px rgba(0,255,65,0.25)', borderColor: 'var(--color-brand)' }}
+          className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between transition-all duration-300 font-sans relative overflow-hidden group"
         >
-          {/* Terminal Corners */}
           <div className="corner corner-tl" />
           <div className="corner corner-tr" />
           <div className="corner corner-bl" />
@@ -113,40 +128,76 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-brand font-mono">STREAK: {stats.streakDays} DAYS</span>
-              <div className="p-2 rounded-lg bg-brand/10 text-brand border border-brand/20">
-                <Flame className="w-4 h-4" />
+              <span className="text-[10px] uppercase font-bold tracking-widest text-brand font-mono flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 bg-brand rounded-full" />
+                STREAK: {complianceStreak} DAYS
+              </span>
+              <div className="p-2 rounded-lg bg-brand/10 text-brand border border-brand/20 group-hover:scale-110 transition-transform">
+                <Flame className="w-4 h-4 text-orange-400" />
               </div>
             </div>
             <h4 className="text-sm font-bold text-text font-display tracking-wide uppercase">ACTIVE_AUTOPILOT</h4>
-            <p className="text-xs text-text-sub font-light">Consistent high-tempo operations.</p>
+            <p className="text-xs text-text-sub font-light">Consistent high-tempo scheduling operations.</p>
           </div>
 
-          <div className="mt-4 space-y-3">
-            <div className="grid grid-cols-3 gap-1.5 xs:gap-2">
+          <div className="mt-4 space-y-4">
+            {/* Row of Stats */}
+            <div className="grid grid-cols-3 gap-2">
               <div className="bg-zinc-950 border border-border p-2 rounded text-center">
-                <span className="block font-mono text-base font-bold text-text">{stats.streakDays}d</span>
-                <span className="text-[9px] uppercase tracking-wider text-muted font-bold font-mono">Streak</span>
+                <span className="block font-mono text-sm font-bold text-text">{stats.streakDays}d</span>
+                <span className="text-[8px] uppercase tracking-wider text-muted font-bold font-mono">Streak</span>
               </div>
               <div className="bg-zinc-950 border border-border p-2 rounded text-center">
-                <span className="block font-mono text-base font-bold text-text">{stats.onTimeRate}%</span>
-                <span className="text-[9px] uppercase tracking-wider text-muted font-bold font-mono">On-Time</span>
+                <span className="block font-mono text-sm font-bold text-text">{stats.onTimeRate}%</span>
+                <span className="text-[8px] uppercase tracking-wider text-muted font-bold font-mono">On-Time</span>
               </div>
               <div className="bg-zinc-950 border border-border p-2 rounded text-center">
-                <span className="block font-mono text-base font-bold text-text">{completedTodayCount}</span>
-                <span className="text-[9px] uppercase tracking-wider text-muted font-bold font-mono">Done</span>
+                <span className="block font-mono text-sm font-bold text-text">{completedTodayCount}</span>
+                <span className="text-[8px] uppercase tracking-wider text-muted font-bold font-mono">Done</span>
+              </div>
+            </div>
+
+            {/* Weekly Active Compliance Grid Dots */}
+            <div className="space-y-2 font-mono">
+              <div className="flex justify-between items-center">
+                <span className="text-[9px] text-muted font-bold uppercase tracking-wider">Compliance Map:</span>
+                <span className="text-[9px] text-brand/70 font-bold uppercase tracking-wider">Streak active</span>
+              </div>
+              <div className="flex justify-between items-center bg-zinc-950/60 border border-border/40 p-2 rounded-lg">
+                {daysOfWeek.map((day, idx) => {
+                  // highlight day dots based on streak count
+                  const isDayCompliant = complianceStreak > 0 && (idx < Math.min(7, complianceStreak));
+                  return (
+                    <div key={idx} className="flex flex-col items-center gap-1.5">
+                      <span className="text-[8px] font-bold text-zinc-500">{day}</span>
+                      <div 
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all duration-300 relative ${
+                          isDayCompliant 
+                            ? 'bg-brand/20 border-brand text-brand shadow-[0_0_8px_rgba(0,255,65,0.4)]' 
+                            : 'bg-zinc-900 border-border text-zinc-600'
+                        }`}
+                      >
+                        {isDayCompliant && (
+                          <span className="absolute inset-0 bg-brand rounded-full animate-ping opacity-25" />
+                        )}
+                        <span className="text-[7px] font-bold">{isDayCompliant ? '✓' : '·'}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Card 3: Priority Sentinel (Deep Work Invitation) */}
+        {/* Card 3: Priority Sentinel (Deep Work Invitation with waves visualization) */}
         <motion.div
           variants={cardVariants}
-          whileHover={{ y: -2, boxShadow: '0 0 15px rgba(0,255,65,0.3)', borderColor: 'var(--color-brand)' }}
+          whileHover={{ y: -3, boxShadow: '0 0 20px rgba(0,255,65,0.25)', borderColor: 'var(--color-brand)' }}
           onClick={onSelectPomodoro}
-          className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between transition-all duration-300 font-sans cursor-pointer group relative"
+          className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between transition-all duration-300 font-sans cursor-pointer group relative overflow-hidden"
         >
+          <div className="absolute inset-0 bg-gradient-to-br from-brand/5 via-transparent to-transparent opacity-20 pointer-events-none" />
           {/* Terminal Corners */}
           <div className="corner corner-tl" />
           <div className="corner corner-tr" />
@@ -155,22 +206,35 @@ export const DashboardMetrics: React.FC<DashboardMetricsProps> = ({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-bold tracking-widest text-brand font-mono">POMODORO_RESCUE</span>
-              <div className="p-2 rounded-lg bg-brand/10 text-brand border border-brand/20">
-                <Hourglass className="w-4 h-4" />
+              <span className="text-[10px] uppercase font-bold tracking-widest text-brand font-mono flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 bg-brand rounded-full animate-pulse" />
+                POMODORO_RESCUE
+              </span>
+              <div className="p-2 rounded-lg bg-brand/10 text-brand border border-brand/20 group-hover:scale-110 transition-transform">
+                <Hourglass className="w-4 h-4 text-brand" />
               </div>
             </div>
             <h4 className="text-sm font-bold text-text font-display tracking-wide uppercase">DEEP_FOCUS_ROOM</h4>
-            <p className="text-xs text-text-sub font-light">Procrastination-busting focus room.</p>
+            <p className="text-xs text-text-sub font-light">Eradicate work procrastination in a distraction-free block.</p>
           </div>
 
-          <div className="mt-4">
-            <div className="flex items-center justify-between bg-brand/5 hover:bg-brand/10 border border-brand/20 p-2.5 rounded transition-all">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-brand animate-pulse" />
-                <span className="text-xs font-bold text-brand uppercase font-mono">[START_FOCUS_BLOCK]</span>
+          {/* Aesthetic Binaural Soundscape Equalizer Waves */}
+          <div className="mt-4 flex items-center justify-between bg-zinc-950/80 border border-border/40 p-2.5 rounded-lg">
+            <div className="flex items-center gap-2">
+              {/* Equalizer lines */}
+              <div className="flex items-end gap-0.5 h-4 select-none">
+                <div className="w-0.5 h-2 bg-brand/60 animate-pulse" />
+                <div className="w-0.5 h-3 bg-brand/80 animate-bounce" style={{ animationDelay: '0.1s' }} />
+                <div className="w-0.5 h-4 bg-brand animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <div className="w-0.5 h-2.5 bg-brand/70 animate-bounce" style={{ animationDelay: '0.3s' }} />
+                <div className="w-0.5 h-1 bg-brand/40 animate-pulse" style={{ animationDelay: '0.4s' }} />
               </div>
-              <span className="font-mono text-xs text-brand group-hover:translate-x-1 transition-transform font-bold">➔</span>
+              <span className="text-[9px] font-mono text-zinc-400 font-bold uppercase tracking-wider">Binaural Ambience</span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <span className="text-[9px] font-mono text-brand font-bold uppercase">[ACTIVATE]</span>
+              <Zap className="w-3.5 h-3.5 text-brand group-hover:translate-x-0.5 transition-transform" />
             </div>
           </div>
         </motion.div>

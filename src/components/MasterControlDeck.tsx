@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Task, Goal, UserStats, AppNotification } from '../types';
 import { 
   Terminal, ShieldAlert, Bot, Calendar, Sparkles, RefreshCw, 
-  Settings, Volume2, Mic, Play, HelpCircle, FileText, CheckSquare, Zap, AlertTriangle
+  Settings, Volume2, Mic, Play, HelpCircle, FileText, CheckSquare, Zap, AlertTriangle, X
 } from 'lucide-react';
 import { CTAButton } from './ui/CTAButton';
 
@@ -470,10 +470,3 @@ export const MasterControlDeck: React.FC<MasterControlDeckProps> = ({
     </div>
   );
 };
-
-// Little Helper close button
-const X: React.FC<{ className?: string }> = ({ className }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);

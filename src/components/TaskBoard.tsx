@@ -4,7 +4,7 @@ import { Task, TaskPriority, TaskStatus } from '../types';
 import { CTAButton } from './ui/CTAButton';
 import { 
   AlertOctagon, CheckCircle2, Circle, Clock, Plus, Trash2, ChevronDown, 
-  ChevronUp, Sparkles, RefreshCw, Layers, Calendar, Mail, Search, X, Check
+  ChevronUp, Sparkles, RefreshCw, Layers, Calendar, Mail, Search, X, Check, BookOpen
 } from 'lucide-react';
 
 interface TaskBoardProps {
@@ -201,9 +201,10 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
         </span>
         <button
           onClick={onShowOnboarding}
-          className="px-4 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/25 text-indigo-300 hover:text-indigo-200 text-xs font-semibold rounded-full cursor-pointer transition-colors"
+          className="px-4 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/25 text-indigo-300 hover:text-indigo-200 text-xs font-semibold rounded-full cursor-pointer transition-all flex items-center gap-1.5"
         >
-          📖 Run Interactive Onboarding
+          <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Run Interactive Onboarding</span>
         </button>
       </div>
 

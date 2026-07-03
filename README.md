@@ -1,5 +1,7 @@
 # 🌌 Saviour AI — Proactive Crisis Mitigation & Deadline Rescue OS (SAVIOUR.OS)
 
+[![Live App Sandbox](https://img.shields.io/badge/Live_Sandbox_URL-Click_To_Access-00ff41?style=for-the-badge&logo=google-run&logoColor=00ff41&labelColor=000000)](https://saviour-ai-260245018870.us-west1.run.app/)
+
 [![Engine](https://img.shields.io/badge/Engine-Gemini%203.5%20Flash-blueviolet?style=flat-square&logo=google-gemini)](https://ai.google.dev/)
 [![Stack](https://img.shields.io/badge/Stack-React%2019%20%2B%20Express-blue?style=flat-square&logo=react)](https://react.dev/)
 [![Storage](https://img.shields.io/badge/Storage-Firebase%20Firestore-orange?style=flat-square&logo=firebase)](https://firebase.google.com/)

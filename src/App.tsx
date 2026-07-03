@@ -15,6 +15,7 @@ import { HabitGoalTracker } from './components/HabitGoalTracker';
 import { WorkspaceConnector } from './components/WorkspaceConnector';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { MasterControlDeck } from './components/MasterControlDeck';
+import { NavigationSidebar, NavigationSection } from './components/NavigationSidebar';
 import { 
   Bot, Sparkles, Flame, CheckCircle, Shield, Award, Calendar, Timer, 
   Layers, Volume2, Info, BookOpen, LogOut, Check, Mail, Settings, X, RefreshCw,
@@ -98,6 +99,7 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState<'board' | 'pomodoro' | 'schedule' | 'habits'>('board');
+  const [activeSection, setActiveSection] = useState<NavigationSection>('console');
   const [badgesExpanded, setBadgesExpanded] = useState<boolean>(true);
   const [chatGenerating, setChatGenerating] = useState(false);
   const [unlockedBadge, setUnlockedBadge] = useState<Badge | null>(null);
@@ -131,6 +133,7 @@ export default function App() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [sandboxEmail, setSandboxEmail] = useState('');
   const [isInitializingAuth, setIsInitializingAuth] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [scanlineOpacity, setScanlineOpacity] = useState<number>(() => {
@@ -218,6 +221,8 @@ export default function App() {
         setUser(firebaseUser);
         setAccessToken(token);
         localStorage.removeItem('is_guest_mode');
+        localStorage.removeItem('is_sandbox_mode');
+        localStorage.removeItem('sandbox_email');
         
         // Load cloud planning data for user
         setIsCloudLoading(true);
@@ -244,11 +249,39 @@ export default function App() {
           setIsInitializingAuth(false);
         }
       },
-      () => {
+      async () => {
         if (localStorage.getItem('is_guest_mode') === 'true') {
           setUser(guestUser as any);
           setAccessToken(localStorage.getItem('last_minute_google_token') || null);
           setIsInitializingAuth(false);
+        } else if (localStorage.getItem('is_sandbox_mode') === 'true') {
+          const cachedEmail = localStorage.getItem('sandbox_email') || 'sandbox@saviour.ai';
+          const sandboxUid = 'sandbox_user_' + cachedEmail.replace(/[^a-zA-Z0-9]/g, '_');
+          const sandboxUser = {
+            uid: sandboxUid,
+            email: cachedEmail,
+            displayName: cachedEmail.split('@')[0],
+            photoURL: null
+          };
+          setUser(sandboxUser as any);
+          setAccessToken(localStorage.getItem('last_minute_google_token') || null);
+          
+          setIsCloudLoading(true);
+          try {
+            const cloudData = await loadUserDataFromCloud(sandboxUid);
+            if (cloudData) {
+              if (cloudData.tasks) setTasks(sanitizeUniqueIds(cloudData.tasks));
+              if (cloudData.goals) setGoals(sanitizeUniqueIds(cloudData.goals));
+              if (cloudData.badges) setBadges(sanitizeUniqueIds(cloudData.badges));
+              if (cloudData.stats) setStats(cloudData.stats);
+              if (cloudData.notifications) setNotifications(sanitizeUniqueIds(cloudData.notifications));
+            }
+          } catch (e) {
+            console.error("Sandbox hydration failed:", e);
+          } finally {
+            setIsCloudLoading(false);
+            setIsInitializingAuth(false);
+          }
         } else {
           setUser(null);
           setAccessToken(null);
@@ -710,7 +743,18 @@ export default function App() {
         };
         setNotifications(prev => [newNotif, ...prev]);
       } else {
-        alert('Login failed: ' + err.message);
+        const errorMsg = err?.message || String(err || '');
+        if (
+          errorMsg.includes('access_denied') || 
+          errorMsg.includes('verification process') || 
+          errorMsg.includes('unverified') || 
+          errorMsg.includes('blocked') || 
+          errorMsg.includes('403')
+        ) {
+          alert('Google Access Blocked:\n\nBecause this application is currently in Google developer testing mode, only pre-approved test emails can log in via Google OAuth.\n\nTo bypass this, please enter your email in the "Secure Email Sandbox" field below to start testing instantly with custom cloud saving!');
+        } else {
+          alert('Login failed: ' + errorMsg);
+        }
       }
     } finally {
       setIsLoggingIn(false);
@@ -725,6 +769,8 @@ export default function App() {
       photoURL: null
     };
     localStorage.setItem('is_guest_mode', 'true');
+    localStorage.removeItem('is_sandbox_mode');
+    localStorage.removeItem('sandbox_email');
     setUser(guestUser as any);
     
     const newNotif: AppNotification = {
@@ -738,35 +784,116 @@ export default function App() {
     setNotifications(prev => [newNotif, ...prev]);
   };
 
-  const handleDisconnectWorkspace = async () => {
-    if (window.confirm('Disconnect your Google Calendar and Gmail integration? Your active tasks will no longer sync.')) {
-      // Always clear local integration state first so the UI responds immediately
+  const handleProceedWithEmail = async (emailToUse: string) => {
+    if (!emailToUse || !emailToUse.includes('@')) {
+      alert('Please enter a valid email address.');
+      return;
+    }
+    setIsLoggingIn(true);
+    try {
+      const sanitizedEmail = emailToUse.trim().toLowerCase();
+      const sandboxUid = 'sandbox_user_' + sanitizedEmail.replace(/[^a-zA-Z0-9]/g, '_');
+      
+      localStorage.setItem('is_sandbox_mode', 'true');
+      localStorage.setItem('sandbox_email', sanitizedEmail);
+      localStorage.removeItem('is_guest_mode');
+      
+      const sandboxUser = {
+        uid: sandboxUid,
+        email: sanitizedEmail,
+        displayName: sanitizedEmail.split('@')[0],
+        photoURL: null
+      };
+      
+      setUser(sandboxUser as any);
       setAccessToken(null);
-      localStorage.removeItem('last_minute_google_token');
+
+      // Try to load any existing cloud data for this specific email
+      setIsCloudLoading(true);
+      const cloudData = await loadUserDataFromCloud(sandboxUid);
+      if (cloudData) {
+        if (cloudData.tasks) setTasks(sanitizeUniqueIds(cloudData.tasks));
+        if (cloudData.goals) setGoals(sanitizeUniqueIds(cloudData.goals));
+        if (cloudData.badges) setBadges(sanitizeUniqueIds(cloudData.badges));
+        if (cloudData.stats) setStats(cloudData.stats);
+        if (cloudData.notifications) setNotifications(sanitizeUniqueIds(cloudData.notifications));
+      }
+
+      const newNotif: AppNotification = {
+        id: `welcome_sandbox_${Date.now()}`,
+        title: '🛡️ SECURE SANDBOX OPERATIVE DEPLOYED',
+        message: `Authenticated as sandbox operative: ${sanitizedEmail}. Personalized planning data is synchronized with your cloud sandbox.`,
+        type: 'success',
+        createdAt: new Date().toISOString(),
+        read: false
+      };
+      setNotifications(prev => [newNotif, ...prev]);
+      rewardXp(20, 'Logged in with custom sandbox profile');
+    } catch (err: any) {
+      console.error(err);
+      alert('Error initializing session: ' + err.message);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleDisconnectSession = async () => {
+    const isSandbox = localStorage.getItem('is_sandbox_mode') === 'true';
+    const isGuest = localStorage.getItem('is_guest_mode') === 'true';
+    const promptMessage = isSandbox 
+      ? 'Disconnect your Sandbox profile and sign out? Your cloud progress will be safely preserved.'
+      : isGuest
+        ? 'Disconnect your Guest session and sign out? Your temporary data will be cleared.'
+        : 'Disconnect your Google Workspace account and sign out?';
+
+    if (window.confirm(promptMessage)) {
+      if (user) {
+        try {
+          await clearGoogleIntegration(user.uid);
+        } catch (err) {
+          console.error("Disconnect cleanup failed:", err);
+        }
+      }
+
+      await logout();
+      localStorage.removeItem('dev_bypass_user');
+      localStorage.removeItem('dev_bypass_token');
+      localStorage.removeItem('is_guest_mode');
+      localStorage.removeItem('is_sandbox_mode');
+      localStorage.removeItem('sandbox_email');
+      setUser(null);
+      setAccessToken(null);
       
       // Reset calendar sync/import states
       setCalendarSyncSuccess(null);
       setLastSyncedTime(null);
       setSyncedEventsCount(null);
       setImportedEvents([]);
-
-      if (user) {
-        try {
-          await clearGoogleIntegration(user.uid);
-        } catch (err) {
-          console.error("Failed to disconnect workspace in Firestore:", err);
-        }
-      }
-
+      
+      setTasks(INITIAL_TASKS);
+      setGoals(INITIAL_GOALS);
+      setBadges(INITIAL_BADGES);
+      setStats({
+        completedCount: 12,
+        onTimeRate: 85,
+        streakDays: 4,
+        totalFocusMinutes: 120,
+        level: 1,
+        xp: 40
+      });
+      setNotifications([]);
+      
+      const sessionLabel = isSandbox ? 'SANDBOX OPERATIVE' : isGuest ? 'GUEST DEMO' : 'GOOGLE ACCOUNT';
       const newNotif: AppNotification = {
         id: `disconnect_${Date.now()}`,
-        title: '🔌 WORKSPACE DISCONNECTED',
-        message: `Your Google Workspace integration has been successfully disconnected.`,
+        title: '🔌 SESSION DISCONNECTED',
+        message: `Your ${sessionLabel} session has been successfully disconnected and signed out.`,
         type: 'warning',
         createdAt: new Date().toISOString(),
         read: false
       };
       setNotifications(prev => [newNotif, ...prev]);
+      setIsSettingsOpen(false);
     }
   };
 
@@ -947,6 +1074,8 @@ export default function App() {
       localStorage.removeItem('dev_bypass_user');
       localStorage.removeItem('dev_bypass_token');
       localStorage.removeItem('is_guest_mode');
+      localStorage.removeItem('is_sandbox_mode');
+      localStorage.removeItem('sandbox_email');
       setUser(null);
       setAccessToken(null);
       
@@ -1259,35 +1388,75 @@ export default function App() {
         </nav>
 
         {/* Hero Cover */}
-        <main className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto px-6 text-center py-24 space-y-8 relative z-10 w-full">
-          <div className="text-brand font-mono text-xs uppercase font-bold tracking-widest glow-accent">[SECURE_LOGIN_REQUISITE]</div>
+        <main className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto px-6 text-center py-16 sm:py-24 relative z-10 w-full space-y-6">
+          <div className="text-brand font-mono text-xs uppercase font-bold tracking-widest glow-accent">
+            [SECURE_LOGIN_REQUISITE]
+          </div>
           
-          <h1 className="font-sans tracking-tight leading-[0.95] max-w-5xl mx-auto mb-4 flex flex-col text-center">
+          <h1 className="font-display tracking-tighter leading-[0.85] max-w-5xl mx-auto flex flex-col text-center">
             <span className="text-white font-extrabold text-[40px] sm:text-[72px] xl:text-[84px] block uppercase">DEFEAT DEADLINES</span>
-            <span className="text-brand font-extrabold text-[44px] sm:text-[76px] xl:text-[90px] block uppercase tracking-tight glow-accent">BEFORE THEY DEFEAT YOU.</span>
+            <span className="text-brand font-extrabold text-[44px] sm:text-[76px] xl:text-[90px] block uppercase glow-accent">BEFORE THEY DEFEAT YOU.</span>
           </h1>
           
           <p className="font-mono text-xs text-muted uppercase tracking-wider font-bold max-w-xl mx-auto leading-relaxed">
             THE SYSTEM REQUIRES GOOGLE AUTHENTICATION TO CONSOLIDATE AND SECURE LIFE SENTINEL METRIC RECORDS. ZERO ANONYMOUS GUESTS. ZERO DATA FLASHING.
           </p>
 
-          <div className="pt-4 max-w-sm mx-auto w-full space-y-3">
+          <div className="pt-4 max-w-md mx-auto w-full space-y-4">
             <CTAButton
               variant="primary"
               size="lg"
               onClick={handleGoogleLogin}
               disabled={isLoggingIn}
-              className="w-full font-mono font-bold uppercase tracking-wider text-xs p-6"
+              className="w-full font-mono font-bold uppercase tracking-wider text-xs py-5 px-6 shadow-[0_0_20px_rgba(0,255,65,0.15)] hover:shadow-[0_0_30px_rgba(0,255,65,0.3)] transition-all cursor-pointer animate-pulse-subtle"
             >
               {isLoggingIn ? 'Establishing secure link...' : 'Connect Google Workspace Account'}
             </CTAButton>
 
+            <div className="flex items-center gap-2 py-2">
+              <span className="h-[1px] bg-white/10 flex-1"></span>
+              <span className="text-[10px] font-mono text-zinc-500 font-bold uppercase tracking-widest px-1">OR SECURE BYPASS</span>
+              <span className="h-[1px] bg-white/10 flex-1"></span>
+            </div>
+
+            <div className="p-4 bg-zinc-950/80 border border-white/5 rounded-xl space-y-2.5 text-left relative group hover:border-brand/30 transition-all duration-300">
+              <div className="corner corner-tl" />
+              <div className="corner corner-tr" />
+              <div className="corner corner-bl" />
+              <div className="corner corner-br" />
+              
+              <span className="text-[9px] font-mono text-brand font-bold uppercase tracking-widest block flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 bg-brand rounded-full animate-pulse" />
+                EMAIL SANDBOX ACCESS
+              </span>
+              <p className="text-[10px] text-zinc-400 font-mono leading-normal">
+                If Google blocks authorization (e.g., Error 403: access_denied because the app is in developer test mode), enter any email below. Your planning data will sync securely in the Firestore cloud!
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="user@example.com"
+                  value={sandboxEmail}
+                  onChange={(e) => setSandboxEmail(e.target.value)}
+                  className="bg-black border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-text placeholder-zinc-600 focus:outline-none focus:border-brand/40 flex-1 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleProceedWithEmail(sandboxEmail)}
+                  disabled={isLoggingIn}
+                  className="px-4 bg-brand text-black rounded-lg hover:brightness-110 font-bold font-mono text-xs cursor-pointer transition-all disabled:opacity-50"
+                >
+                  Go
+                </button>
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={handleProceedAsGuest}
-              className="w-full py-3.5 bg-zinc-950/80 hover:bg-zinc-900 border border-brand/40 hover:border-brand text-brand hover:text-white text-[11px] font-mono font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(0,255,65,0.15)]"
+              className="w-full py-3.5 bg-zinc-950/80 hover:bg-zinc-900 border border-white/5 hover:border-brand/40 text-slate-400 hover:text-white text-[11px] font-mono font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 hover:shadow-[0_0_15px_rgba(0,255,65,0.05)]"
             >
-              <Terminal className="w-4 h-4 text-brand" />
+              <Terminal className="w-4 h-4 text-brand animate-pulse" />
               Proceed as Anonymous Sentinel (Demo Mode)
             </button>
           </div>
@@ -1390,308 +1559,392 @@ export default function App() {
         </div>
       </nav>
 
-      {/* Hero Headings Section (High-Contrast System Terminal Cover Layout) */}
-      <header className="max-w-5xl mx-auto px-6 text-center pt-16 pb-12 space-y-4 relative z-10 flex flex-col items-center border-b border-dashed border-border mb-12 w-full">
-        <div className="text-brand font-mono text-xs uppercase font-bold tracking-widest glow-accent">[SYSTEM.OVERRIDE_ENABLED]</div>
-        <h1 className="font-display tracking-tight leading-[0.95] max-w-5xl mx-auto mb-4 flex flex-col text-center">
-          <span className="text-white font-bold text-[40px] sm:text-[72px] xl:text-[84px] block uppercase">DEFEAT DEADLINES</span>
-          <span className="text-brand font-bold text-[44px] sm:text-[76px] xl:text-[90px] block uppercase tracking-tight glow-accent">BEFORE THEY DEFEAT YOU.</span>
-        </h1>
+      {/* TWO-COLUMN LAYOUT: Left Side Navigation Sidebar, Right side Workspace Area */}
+      <div className="flex-1 flex flex-col lg:flex-row min-w-0">
         
-        <p className="font-mono text-xs text-muted uppercase tracking-wider font-bold max-w-xl mx-auto leading-relaxed">
-          DEPLOYING 5 AUTONOMOUS AGENTS TO GUARD PROJECT INTEGRITY.
-        </p>
+        {/* Clickable Sidebar to Access All Features */}
+        <NavigationSidebar
+          activeSection={activeSection}
+          onSectionChange={setActiveSection}
+          stats={stats}
+          tasks={tasks}
+          goals={goals}
+          user={user}
+          accessToken={accessToken}
+          onLogout={handleLogout}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
 
-        {/* Hero CTA row */}
-        <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full sm:w-auto px-4 justify-center font-mono">
-          <CTAButton
-            variant="primary"
-            size="lg"
-            onClick={() => {
-              const element = document.getElementById('deadlines-checklist-section');
-              element?.scrollIntoView({ behavior: 'smooth' });
-            }}
-            className="w-full sm:w-auto font-display font-bold uppercase tracking-wider text-xs"
-          >
-            Start protecting deadlines →
-          </CTAButton>
-          <CTAButton
-            variant="ghost"
-            size="lg"
-            onClick={() => setShowOnboarding(true)}
-            className="w-full sm:w-auto text-muted hover:text-brand font-display font-bold uppercase tracking-wider text-xs"
-          >
-            See how agents work
-          </CTAButton>
-        </div>
-      </header>
-
-      {/* Main split dashboard stage */}
-      <main className="flex-1 max-w-7xl xl:max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8 pb-16">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Dynamic Workspace Workspace View Area */}
+        <div className="flex-1 flex flex-col min-w-0">
           
-          {/* Left panel (Unifed sequential vertical dashboard feed) - Takes 8 columns */}
-          <div className="lg:col-span-8 space-y-8">
-
-            {/* Google Calendar Manual Import Banner */}
-            <div className="bg-[#111113] border-2 border-dashed border-border rounded-[20px] p-6 relative overflow-hidden shadow-sm font-sans space-y-4">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-brand/5 blur-2xl rounded-full pointer-events-none" />
+          {/* Hero Headings Section (High-Contrast System Terminal Cover Layout) */}
+          {activeSection === 'console' && (
+            <header className="max-w-5xl mx-auto px-6 text-center pt-16 pb-10 flex flex-col items-center border-b border-dashed border-border mb-8 w-full space-y-4">
+              <div className="text-brand font-mono text-xs uppercase font-bold tracking-widest glow-accent">
+                [SYSTEM.OVERRIDE_ENABLED]
+              </div>
+              <h1 className="font-display tracking-tighter leading-[0.85] max-w-5xl mx-auto flex flex-col text-center">
+                <span className="text-white font-extrabold text-[40px] sm:text-[72px] xl:text-[84px] block uppercase">DEFEAT DEADLINES</span>
+                <span className="text-brand font-extrabold text-[44px] sm:text-[76px] xl:text-[90px] block uppercase glow-accent">BEFORE THEY DEFEAT YOU.</span>
+              </h1>
               
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 bg-brand/10 border border-brand/20 text-brand rounded-xl">
-                    <Calendar className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-bold text-text text-sm tracking-tight flex items-center gap-2">
-                      Google Calendar Sync Companion
-                      {accessToken ? (
-                        <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono bg-success/10 border border-success/20 text-success font-bold">CONNECTED</span>
-                      ) : (
-                        <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 font-bold">LOCKED</span>
-                      )}
-                    </h3>
-                    <p className="text-xs text-text-sub mt-0.5 font-light">
-                      {accessToken 
-                        ? "Trigger a manual sync of your Google Calendar now to audit overlapping deadlines and import meeting blocks." 
-                        : "Connect your Google Account Workspace to enable real-time Calendar sync."}
-                    </p>
-                  </div>
-                </div>
+              <p className="font-mono text-xs text-muted uppercase tracking-wider font-bold max-w-xl mx-auto leading-relaxed">
+                DEPLOYING 5 AUTONOMOUS AGENTS TO GUARD PROJECT INTEGRITY.
+              </p>
 
-                <div>
-                  {accessToken ? (
-                    <CTAButton
-                      variant="primary"
-                      size="sm"
-                      onClick={handleManualCalendarImport}
-                      disabled={isCalendarSyncing}
-                      className="w-full sm:w-auto text-[10px] uppercase font-mono font-bold tracking-wider"
-                    >
-                      {isCalendarSyncing ? (
-                        <span className="flex items-center gap-1">
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          Syncing...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1">
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          Manual Import Now
-                        </span>
-                      )}
-                    </CTAButton>
-                  ) : (
-                    <CTAButton
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleGoogleLogin}
-                      disabled={isLoggingIn}
-                      className="w-full sm:w-auto text-[10px] uppercase font-mono font-bold tracking-wider"
-                    >
-                      {isLoggingIn ? "Connecting..." : "Authorize Channel"}
-                    </CTAButton>
-                  )}
-                </div>
+              {/* Hero CTA row */}
+              <div className="flex flex-col sm:flex-row gap-3 mt-6 w-full sm:w-auto px-4 justify-center font-mono">
+                <CTAButton
+                  variant="primary"
+                  size="lg"
+                  onClick={() => {
+                    setActiveSection('deadlines');
+                  }}
+                  className="w-full sm:w-auto font-display font-bold uppercase tracking-wider text-xs"
+                >
+                  START PROTECTING DEADLINES →
+                </CTAButton>
+                <CTAButton
+                  variant="ghost"
+                  size="lg"
+                  onClick={() => setShowOnboarding(true)}
+                  className="w-full sm:w-auto text-muted hover:text-brand font-display font-bold uppercase tracking-wider text-xs"
+                >
+                  SEE HOW AGENTS WORK
+                </CTAButton>
               </div>
+            </header>
+          )}
 
-              {/* Dedicated Status Indicators */}
-              {isCalendarSyncing && (
-                <div className="p-3 bg-zinc-950/80 border border-brand/20 rounded-xl flex items-center gap-2.5 text-xs font-mono text-brand">
-                  <RefreshCw className="w-4 h-4 animate-spin text-brand" />
-                  <span className="animate-pulse">ESTABLISHING CONNECTION & SCANNING CALENDAR BLOCKS...</span>
-                </div>
-              )}
-
-              {calendarSyncSuccess === true && (
-                <div className="space-y-3">
-                  <div className="p-3.5 bg-success/5 border border-success/30 rounded-xl flex items-start gap-2.5 text-xs font-mono text-success">
-                    <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold block uppercase tracking-wider text-[10px]">Google Calendar Sync Complete</span>
-                      <p className="text-text-sub mt-0.5 font-light normal-case">
-                        Successfully fetched <strong>{syncedEventsCount}</strong> events from your primary calendar. Last updated at <span className="text-white font-semibold">{lastSyncedTime}</span>.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* List of imported events */}
-                  {importedEvents.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-dashed border-white/5">
-                      <span className="text-[9px] uppercase font-bold font-mono tracking-widest text-muted block">IMPORTED MEETING BLOCKS</span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {importedEvents.slice(0, 4).map((evt: any) => {
-                          const startStr = evt.start?.dateTime || evt.start?.date;
-                          const formattedTime = startStr 
-                            ? new Date(startStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-                            : 'All Day';
-                          const formattedDate = startStr 
-                            ? new Date(startStr).toLocaleDateString([], { month: 'short', day: 'numeric' }) 
-                            : 'Today';
-                          return (
-                            <div key={evt.id} className="p-2.5 bg-zinc-950/50 border border-white/5 rounded-lg flex items-center justify-between text-[11px]">
-                              <div className="truncate pr-2">
-                                <span className="font-semibold text-text truncate block">{evt.summary || 'Untitled Event'}</span>
-                                <span className="text-[10px] text-zinc-500 font-mono block">{formattedDate} at {formattedTime}</span>
+          {/* Main split dashboard stage */}
+          <main className="flex-1 max-w-7xl xl:max-w-[1600px] mx-auto w-full px-4 sm:px-6 lg:px-8 pb-16 pt-4" id="saviour-workspace-view">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              
+              {/* Center Workspace Stage - Takes 12 columns if full screen chatbot or analytics, or 8 columns if side-by-side with companion chat */}
+              <div className={`${activeSection === 'chat' ? 'lg:col-span-12' : 'lg:col-span-8'} space-y-8`}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeSection}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-8"
+                  >
+                    {/* 1. Master Console Cockpit view */}
+                    {activeSection === 'console' && (
+                      <>
+                        {/* Google Calendar Manual Import Banner */}
+                        <div className="bg-[#111113] border-2 border-dashed border-border rounded-[20px] p-6 relative overflow-hidden shadow-sm font-sans space-y-4">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-brand/5 blur-2xl rounded-full pointer-events-none" />
+                          
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                              <div className="p-2.5 bg-brand/10 border border-brand/20 text-brand rounded-xl">
+                                <Calendar className="w-5 h-5" />
                               </div>
-                              <span className="px-1.5 py-0.5 text-[8px] font-mono rounded bg-brand/5 border border-brand/20 text-brand font-bold uppercase shrink-0">IMPORTED</span>
+                              <div>
+                                <h3 className="font-display font-bold text-text text-sm tracking-tight flex items-center gap-2">
+                                  Google Calendar Sync Companion
+                                  {accessToken ? (
+                                    <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono bg-success/10 border border-success/20 text-success font-bold">CONNECTED</span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded-full text-[8px] font-mono bg-amber-500/10 border border-amber-500/20 text-amber-500 font-bold">LOCKED</span>
+                                  )}
+                                </h3>
+                                <p className="text-xs text-text-sub mt-0.5 font-light">
+                                  {accessToken 
+                                    ? "Trigger a manual sync of your Google Calendar now to audit overlapping deadlines and import meeting blocks." 
+                                    : "Connect your Google Account Workspace to enable real-time Calendar sync."}
+                                </p>
+                              </div>
                             </div>
-                          );
-                        })}
+
+                            <div>
+                              {accessToken ? (
+                                <CTAButton
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={handleManualCalendarImport}
+                                  disabled={isCalendarSyncing}
+                                  className="w-full sm:w-auto text-[10px] uppercase font-mono font-bold tracking-wider"
+                                >
+                                  {isCalendarSyncing ? (
+                                    <span className="flex items-center gap-1">
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                      Syncing...
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1">
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                      Manual Import Now
+                                    </span>
+                                  )}
+                                </CTAButton>
+                              ) : (
+                                <CTAButton
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={handleGoogleLogin}
+                                  disabled={isLoggingIn}
+                                  className="w-full sm:w-auto text-[10px] uppercase font-mono font-bold tracking-wider"
+                                >
+                                  {isLoggingIn ? (
+                                    <span className="flex items-center gap-1">
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                      Connecting...
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="w-3.5 h-3.5" />
+                                      Authorize Channel
+                                    </span>
+                                  )}
+                                </CTAButton>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Dedicated Status Indicators */}
+                          {isCalendarSyncing && (
+                            <div className="p-3 bg-zinc-950/80 border border-brand/20 rounded-xl flex items-center gap-2.5 text-xs font-mono text-brand">
+                              <RefreshCw className="w-4 h-4 animate-spin text-brand" />
+                              <span className="animate-pulse">ESTABLISHING CONNECTION & SCANNING CALENDAR BLOCKS...</span>
+                            </div>
+                          )}
+
+                          {calendarSyncSuccess === true && (
+                            <div className="space-y-3">
+                              <div className="p-3.5 bg-success/5 border border-success/30 rounded-xl flex items-start gap-2.5 text-xs font-mono text-success">
+                                <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                                <div>
+                                  <span className="font-bold block uppercase tracking-wider text-[10px]">Google Calendar Sync Complete</span>
+                                  <p className="text-text-sub mt-0.5 font-light normal-case">
+                                    Successfully fetched <strong>{syncedEventsCount}</strong> events from your primary calendar. Last updated at <span className="text-white font-semibold">{lastSyncedTime}</span>.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* List of imported events */}
+                              {importedEvents.length > 0 && (
+                                <div className="space-y-2 pt-2 border-t border-dashed border-white/5">
+                                  <span className="text-[9px] uppercase font-bold font-mono tracking-widest text-muted block">IMPORTED MEETING BLOCKS</span>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {importedEvents.slice(0, 4).map((evt: any) => {
+                                      const startStr = evt.start?.dateTime || evt.start?.date;
+                                      const formattedTime = startStr 
+                                        ? new Date(startStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+                                        : 'All Day';
+                                      const formattedDate = startStr 
+                                        ? new Date(startStr).toLocaleDateString([], { month: 'short', day: 'numeric' }) 
+                                        : 'Today';
+                                      return (
+                                        <div key={evt.id} className="p-2.5 bg-zinc-950/50 border border-white/5 rounded-lg flex items-center justify-between text-[11px]">
+                                          <div className="truncate pr-2">
+                                            <span className="font-semibold text-text truncate block">{evt.summary || 'Untitled Event'}</span>
+                                            <span className="text-[10px] text-zinc-500 font-mono block">{formattedDate} at {formattedTime}</span>
+                                          </div>
+                                          <span className="px-1.5 py-0.5 text-[8px] font-mono rounded bg-brand/5 border border-brand/20 text-brand font-bold uppercase shrink-0">IMPORTED</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {calendarSyncSuccess === false && (
+                            <div className="p-3.5 bg-crisis/10 border border-crisis/30 rounded-xl flex items-start gap-2.5 text-xs font-mono text-crisis">
+                              <X className="w-4 h-4 text-crisis flex-shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-bold block uppercase tracking-wider text-[10px]">Sync Failed</span>
+                                <p className="text-text-sub mt-0.5 font-light normal-case">
+                                  The Google API request encountered a permissions block or connection issue. Reconnect your account to refresh credentials.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Metrics Row & Critical Alerts Block */}
+                        <DashboardMetrics 
+                          tasks={tasks}
+                          goals={goals}
+                          badges={badges}
+                          stats={stats}
+                          onSelectPomodoro={() => {
+                            setActiveSection('pomodoro');
+                          }}
+                        />
+
+                        {/* Custom Operations Quick Actions Panel (Advanced Master Control Deck) */}
+                        <MasterControlDeck 
+                          tasks={tasks}
+                          goals={goals}
+                          stats={stats}
+                          accessToken={accessToken}
+                          user={user}
+                          isCalendarSyncing={isCalendarSyncing}
+                          isLoggingIn={isLoggingIn}
+                          onAddTask={handleAddTask}
+                          onAutoSchedule={handleAutoSchedule}
+                          onManualCalendarImport={handleManualCalendarImport}
+                          onApplyDeveloperBypass={handleApplyDeveloperBypass}
+                          onGoogleLogin={handleGoogleLogin}
+                          onDisconnectWorkspace={handleDisconnectSession}
+                          onCompletePomodoroSession={handleCompletePomodoroSession}
+                          onAddMessage={(text, sender) => {
+                            setMessages(prev => [
+                              ...prev,
+                              {
+                                id: `${sender}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                                sender,
+                                text,
+                                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              }
+                            ]);
+                          }}
+                          onTriggerChatGeneration={handleSendMessage}
+                          setNotifications={setNotifications}
+                        />
+                      </>
+                    )}
+
+                    {/* 2. Deadlines Checklist view */}
+                    {activeSection === 'deadlines' && (
+                      <div id="deadlines-checklist-section" className="space-y-4">
+                        <div className="border-b border-border pb-2 flex items-center justify-between">
+                          <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
+                            <span className="w-1.5 h-3 bg-brand rounded-sm block" />
+                            Deadlines Checklist
+                          </h3>
+                        </div>
+                        <TaskBoard
+                          tasks={tasks}
+                          onAddTask={handleAddTask}
+                          onUpdateTask={handleUpdateTask}
+                          onDeleteTask={handleDeleteTask}
+                          onBreakdownTask={handleBreakdownTask}
+                          onMitigateTask={handleMitigateTask}
+                          accessToken={accessToken}
+                          onSyncToCalendar={handleSyncToCalendar}
+                          onSaveGmailDraft={handleSaveGmailDraft}
+                          onShowOnboarding={() => setShowOnboarding(true)}
+                          onSendEmailReminder={handleSendEmailReminder}
+                        />
                       </div>
-                    </div>
-                  )}
+                    )}
+
+                    {/* 3. AI Autopilot Timeline view */}
+                    {activeSection === 'timeline' && (
+                      <div id="ai-timeline-section" className="space-y-4">
+                        <div className="border-b border-border pb-2 flex items-center justify-between">
+                          <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
+                            <span className="w-1.5 h-3 bg-amber-500 rounded-sm block" />
+                            AI Autopilot Timeline
+                          </h3>
+                        </div>
+                        <SchedulerView
+                          tasks={tasks}
+                          onUpdateTask={handleUpdateTask}
+                          onAutoSchedule={handleAutoSchedule}
+                        />
+                      </div>
+                    )}
+
+                    {/* 4. Pomodoro Focus Rescue view */}
+                    {activeSection === 'pomodoro' && (
+                      <div id="pomodoro-focus-section" className="space-y-4">
+                        <div className="border-b border-border pb-2 flex items-center justify-between">
+                          <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
+                            <span className="w-1.5 h-3 bg-red-500 rounded-sm block" />
+                            Pomodoro focus rescue
+                          </h3>
+                        </div>
+                        <PomodoroRescue
+                          tasks={tasks}
+                          onCompleteSession={handleCompletePomodoroSession}
+                        />
+                      </div>
+                    )}
+
+                    {/* 5. Habit Recurrence objectives view */}
+                    {activeSection === 'habits' && (
+                      <div id="habits-tracker-section" className="space-y-4">
+                        <div className="border-b border-border pb-2 flex items-center justify-between">
+                          <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
+                            <span className="w-1.5 h-3 bg-emerald-500 rounded-sm block" />
+                            Habit Recurrence objectives
+                          </h3>
+                        </div>
+                        <HabitGoalTracker
+                          goals={goals}
+                          onUpdateGoal={handleUpdateGoal}
+                          onAddGoal={handleAddGoal}
+                          onDeleteGoal={handleDeleteGoal}
+                        />
+                      </div>
+                    )}
+
+                    {/* 6. Operations Analytics view */}
+                    {activeSection === 'analytics' && (
+                      <div id="analytics-section" className="space-y-4">
+                        <div className="border-b border-border pb-2 flex items-center justify-between">
+                          <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
+                            <span className="w-1.5 h-3 bg-indigo-500 rounded-sm block" />
+                            Operations Analytics
+                          </h3>
+                        </div>
+                        <AnalyticsPanel stats={stats} />
+                      </div>
+                    )}
+
+                    {/* 7. Dedicated AI Agent Chat view */}
+                    {activeSection === 'chat' && (
+                      <div className="border border-border bg-[#09090b] rounded-2xl overflow-hidden flex flex-col h-[500px] sm:h-[650px]">
+                        <div className="p-4 bg-zinc-950/60 border-b border-border flex items-center justify-between font-mono text-xs">
+                          <span className="text-white font-bold uppercase tracking-wider flex items-center gap-2">
+                            <Bot className="w-4 h-4 text-brand" />
+                            Primary Sentinel Mitigation Channel
+                          </span>
+                          <span className="text-[10px] text-brand animate-pulse uppercase">CONNECTED_ONLINE</span>
+                        </div>
+                        <div className="flex-1 min-h-0 bg-black/40">
+                          <AIAgentCompanion
+                            messages={messages}
+                            onSendMessage={handleSendMessage}
+                            onTriggerSuggestedAction={handleTriggerSuggestedAction}
+                            isGenerating={chatGenerating}
+                            isCalendarConnected={!!accessToken}
+                            isGmailConnected={!!accessToken}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Right panel (AI Chat Companion) - Rendered only when activeSection is NOT 'chat' */}
+              {activeSection !== 'chat' && (
+                <div id="ai-agent-panel" className="lg:col-span-4 lg:sticky lg:top-24 h-[420px] lg:h-[650px]">
+                  <AIAgentCompanion
+                    messages={messages}
+                    onSendMessage={handleSendMessage}
+                    onTriggerSuggestedAction={handleTriggerSuggestedAction}
+                    isGenerating={chatGenerating}
+                    isCalendarConnected={!!accessToken}
+                    isGmailConnected={!!accessToken}
+                  />
                 </div>
               )}
 
-              {calendarSyncSuccess === false && (
-                <div className="p-3.5 bg-crisis/10 border border-crisis/30 rounded-xl flex items-start gap-2.5 text-xs font-mono text-crisis">
-                  <X className="w-4 h-4 text-crisis flex-shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold block uppercase tracking-wider text-[10px]">Sync Failed</span>
-                    <p className="text-text-sub mt-0.5 font-light normal-case">
-                      The Google API request encountered a permissions block or connection issue. Reconnect your account to refresh credentials.
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
-
-            {/* 1. Metrics Row & Critical Alerts Block */}
-            <DashboardMetrics 
-              tasks={tasks}
-              goals={goals}
-              badges={badges}
-              stats={stats}
-              onSelectPomodoro={() => {
-                document.getElementById('pomodoro-focus-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
-
-            {/* 2. Custom Operations Quick Actions Panel (Advanced Master Control Deck) */}
-            <MasterControlDeck 
-              tasks={tasks}
-              goals={goals}
-              stats={stats}
-              accessToken={accessToken}
-              user={user}
-              isCalendarSyncing={isCalendarSyncing}
-              isLoggingIn={isLoggingIn}
-              onAddTask={handleAddTask}
-              onAutoSchedule={handleAutoSchedule}
-              onManualCalendarImport={handleManualCalendarImport}
-              onApplyDeveloperBypass={handleApplyDeveloperBypass}
-              onGoogleLogin={handleGoogleLogin}
-              onDisconnectWorkspace={handleDisconnectWorkspace}
-              onCompletePomodoroSession={handleCompletePomodoroSession}
-              onAddMessage={(text, sender) => {
-                setMessages(prev => [
-                  ...prev,
-                  {
-                    id: `${sender}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                    sender,
-                    text,
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  }
-                ]);
-              }}
-              onTriggerChatGeneration={handleSendMessage}
-              setNotifications={setNotifications}
-            />
-
-            {/* 3. Deadlines Checklist Section */}
-            <div id="deadlines-checklist-section" className="space-y-4">
-              <div className="border-b border-border pb-2 flex items-center justify-between">
-                <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
-                  <span className="w-1.5 h-3 bg-brand rounded-sm block" />
-                  Deadlines Checklist
-                </h3>
-              </div>
-              <TaskBoard
-                tasks={tasks}
-                onAddTask={handleAddTask}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onBreakdownTask={handleBreakdownTask}
-                onMitigateTask={handleMitigateTask}
-                accessToken={accessToken}
-                onSyncToCalendar={handleSyncToCalendar}
-                onSaveGmailDraft={handleSaveGmailDraft}
-                onShowOnboarding={() => setShowOnboarding(true)}
-                onSendEmailReminder={handleSendEmailReminder}
-              />
-            </div>
-
-            {/* 4. AI Autopilot Timeline Section */}
-            <div id="ai-timeline-section" className="space-y-4">
-              <div className="border-b border-border pb-2 flex items-center justify-between">
-                <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
-                  <span className="w-1.5 h-3 bg-amber-500 rounded-sm block" />
-                  AI Autopilot Timeline
-                </h3>
-              </div>
-              <SchedulerView
-                tasks={tasks}
-                onUpdateTask={handleUpdateTask}
-                onAutoSchedule={handleAutoSchedule}
-              />
-            </div>
-
-            {/* 5. Operations Analytics Panel */}
-            <div id="analytics-section" className="space-y-4">
-              <div className="border-b border-border pb-2 flex items-center justify-between">
-                <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
-                  <span className="w-1.5 h-3 bg-indigo-500 rounded-sm block" />
-                  Operations Analytics
-                </h3>
-              </div>
-              <AnalyticsPanel stats={stats} />
-            </div>
-
-            {/* 6. Pomodoro Focus Rescue Block */}
-            <div id="pomodoro-focus-section" className="space-y-4">
-              <div className="border-b border-border pb-2 flex items-center justify-between">
-                <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
-                  <span className="w-1.5 h-3 bg-red-500 rounded-sm block" />
-                  Pomodoro Rescue block
-                </h3>
-              </div>
-              <PomodoroRescue
-                tasks={tasks}
-                onCompleteSession={handleCompletePomodoroSession}
-              />
-            </div>
-
-            {/* 7. Habit & Recurrence Trackers */}
-            <div id="habits-tracker-section" className="space-y-4">
-              <div className="border-b border-border pb-2 flex items-center justify-between">
-                <h3 className="font-display font-bold text-base tracking-wide uppercase text-white flex items-center gap-2">
-                  <span className="w-1.5 h-3 bg-emerald-500 rounded-sm block" />
-                  Habit Recurrence objectives
-                </h3>
-              </div>
-              <HabitGoalTracker
-                goals={goals}
-                onUpdateGoal={handleUpdateGoal}
-                onAddGoal={handleAddGoal}
-                onDeleteGoal={handleDeleteGoal}
-              />
-            </div>
-          </div>
-
-          {/* Right panel (AI Chat Companion) - Takes 4 columns */}
-          <div id="ai-agent-panel" className="lg:col-span-4 lg:sticky lg:top-24 h-[420px] lg:h-[650px]">
-            <AIAgentCompanion
-              messages={messages}
-              onSendMessage={handleSendMessage}
-              onTriggerSuggestedAction={handleTriggerSuggestedAction}
-              isGenerating={chatGenerating}
-              isCalendarConnected={!!accessToken}
-              isGmailConnected={!!accessToken}
-            />
-          </div>
-
+          </main>
         </div>
-      </main>
+      </div>
 
       {/* Settings Modal (Workspace Connector Panel) */}
       <AnimatePresence>
@@ -1724,7 +1977,7 @@ export default function App() {
                     accessToken={accessToken}
                     isLoggingIn={isLoggingIn}
                     onConnectGoogle={handleGoogleLogin}
-                    onDisconnect={handleDisconnectWorkspace}
+                    onDisconnect={handleDisconnectSession}
                   />
                 </div>
 
