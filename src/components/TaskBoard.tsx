@@ -65,6 +65,11 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
           dueDate: task.dueDate
         })
       });
+      
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+      
       const data = await res.json();
       if (data) {
         onUpdateTask({
@@ -78,8 +83,21 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({
         });
       }
     } catch (err) {
-      console.error(err);
-      alert('Triage diagnostic failed. Please check that the server is active.');
+      console.error("Triage diagnostic error:", err);
+      // Fail gracefully and show an error/warning mindset inside the task triage view
+      onUpdateTask({
+        ...task,
+        triageData: {
+          severity: 'critical',
+          recoveryPlan: [
+            'Check neural connection: The Saviour AI companion was unable to reach its diagnostics server.',
+            'Review timeline manually to identify realistic extensions.',
+            'Clear ambient noise and start a 25-minute Pomodoro focus block.'
+          ],
+          damageControlEmail: 'Dear team, I am experiencing a temporary delay with our deliverables due to a configuration block. Resolving immediately.',
+          recoveryMindset: '⚠️ DIAGNOSTIC LINK FAULT: Could not reach neural sentinel. Manual diagnostic sequence initialized.'
+        }
+      });
     } finally {
       setTriageLoadingTaskId(null);
     }

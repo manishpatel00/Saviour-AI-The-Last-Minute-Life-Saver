@@ -10,6 +10,16 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// Simple request logger middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[HTTP] ${req.method} ${req.url} - Status: ${res.statusCode} (${duration}ms)`);
+  });
+  next();
+});
+
 app.use(express.json());
 
 // Initialize the secret-secure Google GenAI Client with Telemetry
